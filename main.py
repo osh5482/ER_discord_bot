@@ -60,9 +60,7 @@ async def getInGameUser2(ctx):
         color=0x00FF00,
     )
     embed.add_field(name="\u200b", value=f"**{inGameUser}** 명", inline=False)
-    file = discord.File(
-        f"D:\osh\python\ER_discord_bot\emoticon/{icon}.png", filename="leniticon.png"
-    )
+    file = discord.File(f"emoticon/{icon}.png", filename="leniticon.png")
     embed.set_thumbnail(url="attachment://leniticon.png")
     await ctx.send(file=file, embed=embed)
     print(f"Success getInGameUser {inGameUser} now")
@@ -128,7 +126,7 @@ async def getUserInfo(ctx, player_name):  # 유저정보 확인 함수
         mostChar = ER.getMostCharacterCode(player_name)
         charName, code = ER.find_name(mostChar)
         file = discord.File(
-            f"D:\osh\python\ER_discord_bot\charProfile/{code}_{charName}.png",
+            f"charProfile/{code}_{charName}.png",
             filename="profile.png",
         )
         embed.set_thumbnail(url="attachment://profile.png")
