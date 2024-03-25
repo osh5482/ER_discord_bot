@@ -60,7 +60,9 @@ async def getInGameUser2(ctx):
         color=0x00FF00,
     )
     embed.add_field(name="\u200b", value=f"**{inGameUser}** 명", inline=False)
-    file = discord.File(f"./emoticon/{icon}.png", filename="leniticon.png")
+    file = discord.File(
+        f"D:\osh\python\ER_discord_bot\emoticon/{icon}.png", filename="leniticon.png"
+    )
     embed.set_thumbnail(url="attachment://leniticon.png")
     await ctx.send(file=file, embed=embed)
     print(f"Success getInGameUser {inGameUser} now")
@@ -126,7 +128,7 @@ async def getUserInfo(ctx, player_name):  # 유저정보 확인 함수
         mostChar = ER.getMostCharacterCode(player_name)
         charName, code = ER.find_name(mostChar)
         file = discord.File(
-            f"./charProfile/{code}_{charName}.png",
+            f"D:\osh\python\ER_discord_bot\charProfile/{code}_{charName}.png",
             filename="profile.png",
         )
         embed.set_thumbnail(url="attachment://profile.png")
@@ -152,6 +154,21 @@ async def checkDemigodRating(ctx):  # 데미갓 컷 보는 함수
     rating = ER.demigodRating()
     await ctx.channel.send(f"> 데미갓 컷 : **{rating}** 점")
     print(f"Success checkDemigodRating...{rating} now")
+
+
+@bot.listen()
+async def on_message(ctx):  # 전적 검색 함수, 멀티서치 가능
+    # 봇이 보낸 메시지 무시
+    if ctx.author == bot.user:
+        return
+
+    if ctx.content == "젠장":
+        embed = discord.Embed(title="젠장 마커스!!!!", description="난 네가 좋다!!!!")
+        embed.set_image(
+            url="https://cdn.discordapp.com/attachments/1221830644775129138/1221830793500954784/image.png?ex=66140199&is=66018c99&hm=ae4f543270cd4d60f8a39424842f753206af4f9b1cf402b23e0b8f920eea92cb&"
+        )
+        await ctx.channel.send(embed=embed)
+        print("젠장 마커스 난 네가 좋다")
 
 
 bot.run(TOKEN)

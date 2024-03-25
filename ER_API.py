@@ -1,4 +1,3 @@
-from bs4 import BeautifulSoup
 import urllib.request
 import json
 from datetime import datetime
@@ -104,7 +103,7 @@ def getRequestUrl(url):  # API url 접근 함수
         if reponse.getcode() == 200:
             return reponse.read().decode("utf-8")  # 디코딩된 url 반환
     except Exception as e:
-        # print(e)
+        print(e)
         return None  # url 접근 실패시 None 반환
 
 
@@ -355,3 +354,17 @@ def iternityRating():
         # lastUser = lastIternity["nickname"]
         iternity_cut = lastIternity["mmr"]
         return iternity_cut  # lastUser
+
+
+# def charStatistic(meta):
+#     url = f"https://open-api.bser.io/v2/data/{meta}/"
+#     responseDecode = getRequestUrl(url)
+#     data = json.loads(responseDecode)
+#     return data
+
+
+# hash = charStatistic("hash")
+# print(json.dumps(hash, ensure_ascii=False, indent=2))
+
+# Character = charStatistic("CharacterSkin")
+# print(json.dumps(Character, ensure_ascii=False, indent=2))
