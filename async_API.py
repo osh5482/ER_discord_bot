@@ -357,7 +357,7 @@ async def getDemigodRating():  # 데미갓 컷 알려주는 함수
         response_json = await addHeader(url)
         if response_json:
             top_ranks = response_json["topRanks"]
-            last_demigod = top_ranks[699]
+            last_demigod = top_ranks[-301]  # == top_ranks[699]
             demigod_cut = last_demigod["mmr"]
             # print("Success: detecting lowest demigod MMR")
             return demigod_cut
