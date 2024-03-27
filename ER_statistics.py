@@ -83,10 +83,10 @@ async def get_statistics_RP(dl):
         print(e)
 
 
-async def main():
-    s = await make_character_statistics("Axe", "Jackie")
-    print(s)
+# async def main():
+#     s = await make_character_statistics("Axe", "Jackie")
+#     print(s)
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+# if __name__ == "__main__":
+#     asyncio.run(main())
