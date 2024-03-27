@@ -1,0 +1,442 @@
+import time
+import aiohttp
+import asyncio
+import urllib.parse
+from bs4 import BeautifulSoup
+import json
+from datetime import datetime
+import os
+from dotenv import load_dotenv
+
+load_dotenv(verbose=True)
+ER_key = os.getenv("ER")
+steam_key = os.getenv("steam")
+tiers = {
+    "다이아몬드": [(4800, 5150), (5150, 5500), (5500, 5850), (5850, 6200)],
+    "플레티넘": [(3600, 3900), (3900, 4200), (4200, 4500), (4500, 4800)],
+    "골드": [(2600, 2850), (2850, 3100), (3100, 3350), (3350, 3600)],
+    "실버": [(1600, 1850), (1850, 2100), (2100, 2350), (2350, 2600)],
+    "브론즈": [(800, 1000), (1000, 1200), (1200, 1400), (1400, 1600)],
+    "아이언": [(0, 200), (200, 400), (400, 600), (600, 800)],
+}
+charCode = {
+    "jackie": 1,
+    "aya": 2,
+    "hyunwoo": 3,
+    "magnus": 4,
+    "fiora": 5,
+    "nadine": 6,
+    "zahir": 7,
+    "hart": 8,
+    "isol": 9,
+    "lidailin": 10,
+    "yuki": 11,
+    "hyejin": 12,
+    "xiukai": 13,
+    "sissela": 14,
+    "chiara": 15,
+    "adriana": 16,
+    "silvia": 17,
+    "shoichi": 18,
+    "emma": 19,
+    "lenox": 20,
+    "rozzi": 21,
+    "luke": 22,
+    "cathy": 23,
+    "adela": 24,
+    "bernice": 25,
+    "barbara": 26,
+    "alex": 27,
+    "sua": 28,
+    "leon": 29,
+    "eleven": 30,
+    "rio": 31,
+    "william": 32,
+    "nicky": 33,
+    "nathapon": 34,
+    "jan": 35,
+    "eva": 36,
+    "daniel": 37,
+    "jenny": 38,
+    "camilo": 39,
+    "chloe": 40,
+    "johann": 41,
+    "bianca": 42,
+    "celine": 43,
+    "echion": 44,
+    "mai": 45,
+    "aiden": 46,
+    "laura": 47,
+    "tia": 48,
+    "felix": 49,
+    "elena": 50,
+    "priya": 51,
+    "adina": 52,
+    "markus": 53,
+    "karla": 54,
+    "estelle": 55,
+    "piolo": 56,
+    "martina": 57,
+    "haze": 58,
+    "issac": 59,
+    "tazia": 60,
+    "irem": 61,
+    "theodore": 62,
+    "lyanh": 63,
+    "vanya": 64,
+    "debimariene": 65,
+    "arda": 66,
+    "abigail": 67,
+    "alonso": 68,
+    "leni": 69,
+    "tsubame": 70,
+    "kenneth": 71,
+    "katja": 72,
+}
+
+
+# async def getCurrentPlayer_crawl():  # 웹 크롤링해서 동접 가져오는 함수
+#     url = "https://steamcommunity.com/app/1049590"
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get(url) as response:
+#             if response.status == 200:
+#                 html = await response.text()
+#                 soup = BeautifulSoup(html, "html.parser")
+#                 span = soup.find("span", class_="apphub_NumInApp")
+#                 currentPlayer, _ = span.text.split(" ")
+#                 currentPlayer = currentPlayer.replace(",", "")
+#                 return int(currentPlayer)
+#             else:
+#                 print(f"Error: Failed to fetch URL, status code {response.status}")
+#                 return None
+
+
+async def getCurrentPlayer_api():  # 스팀 api로 동접 가져오는 함수
+    url = "https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?&appid=1049590"
+    headers = {"x-api-key": steam_key}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                response_json = await response.json()
+                response = response_json["response"]
+                player_count = response["player_count"]
+                return player_count
+            else:
+                print(f"Error: {response.status}")
+                return None  # URL 접근 실패시 None 반환
+
+
+async def addHeader(url):  # url에 헤더 추가하는 함수
+    headers = {"x-api-key": ER_key}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                response_json = await response.json()
+                # print(json.dumps(response_json, ensure_ascii=False, indent=2))
+                return response_json  # 디코딩된 URL 반환
+            else:  # 보통 네트워크 에러임
+                print(f"Error: {response.status}")
+                # 여기서 발생한 에러를 호출한 곳으로 전달하고 함
+                raise aiohttp.ClientResponseError(status=response.status)
+
+
+async def getUserNum(nickname):  # 닉네임으로 유저id 가져오는 함수
+    base = "https://open-api.bser.io/v1/user/nickname"
+    parameters = f"?query={urllib.parse.quote(nickname)}"
+    url = base + parameters
+    response_json = await addHeader(url)
+    # 응답이 있을 경우 JSON 데이터를 파싱하여 필요한 정보를 추출
+    try:
+        # print(response_json)
+        if response_json["code"] == 200:
+            user = response_json["user"]
+            user_num = user["userNum"]
+            user_name = user["nickname"]
+            return user_num, user_name  # 유저정보가 있으면 id랑 닉네임 반환
+        if response_json["code"] == 404:
+            return 404  # 없는 유저임
+    except aiohttp.ClientResponseError as e:
+        print(f"Error: code: {e.status}, {e.message}")
+        return e  # 네트워크 에러처리
+
+
+async def getCurrentSeason():  # 현재 시즌 정보 가져오는 함수
+    url = "https://open-api.bser.io/v2/data/Season"
+    response_json = await addHeader(url)
+    if response_json != aiohttp.ClientResponseError:
+        all_season_data = response_json["data"]
+        if all_season_data:
+            current_season_data = all_season_data[-1]
+            return current_season_data
+        else:
+            print("Error: 'data' key not found in JSON response")
+            return None
+    else:
+        print("Error: Failed to fetch response from the API")
+        return response_json
+
+
+async def getCurrentSeasonName():  # 현재 시즌 이름 판별 함수
+    try:
+        current_season_data = await getCurrentSeason()
+        if current_season_data:
+            season_id = current_season_data["seasonID"]
+            if (season_id - 17) % 2 == 0:
+                front = "정규 시즌"
+                now = (season_id - 17) // 2
+            else:
+                front = "프리 시즌"
+                now = ((season_id - 17) // 2) + 1
+            current_season_name = f"{front} {now}"
+            return current_season_data, current_season_name
+        else:
+            print("Error: Failed to get current season data")
+            return None
+    except Exception as e:
+        print(e)
+        return None
+
+
+async def endCurrentSeason(current_season_data):  # 현재시즌 끝나는 시간 가져오는 함수
+    if current_season_data:
+        season_end = current_season_data["seasonEnd"]
+        # print("Success: take end time of current season")
+        end_date, end_time = season_end.split(" ")
+        end_year, end_month, end_day = end_date.split("-")
+        end_hour = end_time.split(":")[0]
+        last_day = f"{end_year}년 {end_month}월 {end_day}일 {end_hour}시"
+        # print("Success: converting time data into str")
+        return last_day
+    else:
+        print("Error: Failed to get current season data")
+        return None
+
+
+async def remainTime(
+    current_season_data,
+):  # 현재시즌 끝날때까지 남은 시간 계산하는 함수
+    try:
+        if current_season_data:
+            season_end = current_season_data["seasonEnd"]
+            target_time = datetime.strptime(season_end, "%Y-%m-%d %H:%M:%S")
+            current_time = datetime.now()
+
+            time_difference = target_time - current_time  # 차이 계산
+
+            remaining_seconds = (
+                time_difference.total_seconds()
+            )  # 남은 시간을 초 단위로 변환
+
+            remaining_days, remaining_seconds = divmod(remaining_seconds, 86400)
+            remaining_hours, remaining_seconds = divmod(remaining_seconds, 3600)
+            remaining_minutes, _ = divmod(
+                remaining_seconds, 60
+            )  # 남은 일, 시간, 분 계산
+
+            remaining_time_list = [
+                int(remaining_days),
+                int(remaining_hours),
+                int(remaining_minutes),
+            ]  # 반환값 리스트 생성
+
+            # print("Success: creating remain time list [d,h,m]")
+            return remaining_time_list
+        else:
+            print("Error: Failed to get current season data")
+            return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+async def getUserSeasonData(
+    user_tuple,
+):  # 유저 정보 튜플로 시즌 랭크 데이터 가져오는 함수
+    if user_tuple == 404:  # 없는유저인경우
+        return 404
+    else:
+        user_num = user_tuple[0]
+        # user_name = user_tuple[1]
+        base = "https://open-api.bser.io/v1/user/stats"
+        current_season_data = await getCurrentSeason()
+        season_id = current_season_data["seasonID"]
+        para = f"/{user_num}/{season_id}"  # 3시즌 랭쿼드 데이터
+        url = base + para
+        response_json = await addHeader(url)
+        if response_json["code"] == 404:  # 시즌데이터가 없는경우
+            return 0
+        else:
+            user_stats = response_json["userStats"][0]
+            tier = detectTier(user_stats)
+            user_stats["tier"] = tier
+            # print(f"Success: creating user's season data")
+            # print(json.dumps(user_stats, ensure_ascii=False, indent=2))
+            return user_stats  # 유저의 랭크 데이터를 딕셔너리로 반환
+
+
+# async def getSimpleData(user_num):  # 유저 id로 기본 데이터 가져오는 함수
+#     if user_num is None:
+#         return None
+#     base = "https://open-api.bser.io/v1/"
+#     current_season_data = await getCurrentSeason()
+#     season_id = current_season_data["seasonID"]
+#     para = f"/{user_num}/{season_id}"  # 3시즌 랭쿼드 데이터
+#     url = base + para
+#     async with aiohttp.ClientSession() as session:
+#         async with session.get(url) as response:
+#             if response.status != 200:  # 데이터를 가져오지 못한 경우 None 반환
+#                 print("존재하지 않는 유저")
+#                 return None
+#             else:
+#                 data = await response.json()
+#                 return data["message"]
+
+
+def detectTier(userStats, tiers=tiers):  # mmr에 따른 티어 탐지
+    mmr = userStats["mmr"]
+    division = 5
+    if mmr >= 6200:
+        rank = userStats["rank"]
+        userTier = isRanker(rank)
+        # print("Success: detecting user tier")
+        return userTier
+    else:
+        for tier, ranges in tiers.items():
+            division = 5
+            for low, high in ranges:
+                division -= 1
+                if low <= mmr < high:
+                    userTier = tier
+                    # print("Success: detecting user tier")
+                    return f"{userTier} {division}"
+
+
+def isRanker(rank):  # 상위티어 구분 함수
+    if rank < 200:
+        tier = "이터니티"
+    elif rank < 700:
+        tier = "데미갓"
+    else:
+        tier = "미스릴"
+    return tier
+
+
+# async def getMostCharacterCode(user_num):  # 유저 id로 모스트 캐릭터 코드 찾는 함수
+#     try:
+#         user_stats = await getUserSeasonData(user_num)
+#         if user_stats:
+#             character_stats = user_stats["characterStats"]
+#             most_character_code = character_stats[0]["characterCode"]
+#             print(most_character_code)
+#             return most_character_code
+#         else:
+#             print("Error: Failed to get user stats")
+#             return None
+#     except Exception as e:
+#         print(f"Error: {e}")
+#         return None
+
+
+def findCharacterName(
+    most_character_code, charCode=charCode
+):  # 캐릭터 코드로 캐릭터 이름 찾는 함수
+    for name, code in charCode.items():
+        if code == most_character_code:
+            # print("Success: find user most character with code")
+            return name, code
+    return None
+
+
+async def getDemigodRating():  # 데미갓 컷 알려주는 함수
+    try:
+        base = "https://open-api.bser.io/v1"
+        current_season_data = await getCurrentSeason()
+        season_id = current_season_data["seasonID"]
+        para = f"/rank/top/{season_id}/3"  # 3시즌 랭쿼드 데이터
+        url = base + para
+        response_json = await addHeader(url)
+        if response_json:
+            top_ranks = response_json["topRanks"]
+            last_demigod = top_ranks[-301]  # == top_ranks[699]
+            demigod_cut = last_demigod["mmr"]
+            # print("Success: detecting lowest demigod MMR")
+            return demigod_cut
+        else:
+            print("Error: Failed to get response from the API")
+            return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+async def getIternityRating():  # 이터니티 컷 알려주는 함수
+    try:
+        base = "https://open-api.bser.io/v1"
+        current_season_data = await getCurrentSeason()
+        season_id = current_season_data["seasonID"]
+        para = f"/rank/top/{season_id}/3"  # 3시즌 랭쿼드 데이터
+        url = base + para
+        response_json = await addHeader(url)
+        if response_json:
+            top_ranks = response_json["topRanks"]
+            last_iternity = top_ranks[199]
+            iternity_cut = last_iternity["mmr"]
+            # print("Success: detecting lowest iternity MMR")
+            return iternity_cut
+        else:
+            print("Error: Failed to get response from the API")
+            return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+async def getPatchNote():  # 공홈에서 제일 최근 메이저 패치노트 링크 가져오는 함수
+    try:
+        patch_note_list_url = (
+            "https://playeternalreturn.com/posts/news?categoryPath=patchnote"
+        )
+        async with aiohttp.ClientSession() as session:
+            async with session.get(patch_note_list_url) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, "html.parser")
+                    tag_div = soup.find("ul", class_="er-articles")
+                    for li in tag_div.find_all("li"):
+                        h4 = li.find("h4", class_="er-article__title")
+                        if h4 and "PATCH NOTES" in h4.text:
+                            a = li.find("a", class_="er-article-link")
+                            if a:
+                                recent_patch_note = a["href"]
+                                return recent_patch_note
+                    print("Error: Failed to find patch note")
+                    return None
+                else:
+                    print(
+                        f"Error: Failed to fetch HTML, status code: {response.status}"
+                    )
+                    return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+
+# async def main():
+#     cnt = 0
+#     start_time = time.time()
+#     # while cnt < 50:
+#     #     now = await getUserSeasonData(4448847)
+#     #     print(now)
+#     #     cnt += 1
+
+#     stats = await getUserNum("절검")
+#     a = await getUserSeasonData(stats)
+#     print(json.dumps(a, ensure_ascii=False, indent=2))
+#     end_time = time.time()  # 종료 시간 기록
+#     total_time = end_time - start_time  # 전체 작업 시간 계산
+#     rounded_time = round(total_time, 2)
+#     print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
+
+
+# if __name__ == "__main__":
+#     asyncio.run(main())
