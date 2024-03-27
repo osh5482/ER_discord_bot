@@ -25,7 +25,7 @@ def current_time():
 
 
 @bot.event
-async def on_command_error(error):
+async def on_command_error(ctx, error):
     """없는 명령어 무시하는 함수"""
     if isinstance(error, commands.CommandNotFound):
         return

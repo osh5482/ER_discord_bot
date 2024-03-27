@@ -343,11 +343,13 @@ def detect_tier(userStats, tiers=tiers):
     mmr에 따른 티어 탐지하는 함수
     반환값 : str(티어)"""
     mmr = userStats["mmr"]
+
     if mmr >= 6200:
         rank = userStats["rank"]
         userTier = is_ranker(rank)
         # print("Success: detecting user tier")
         return userTier
+
     else:
         userTier = is_not_ranker(mmr)
         return userTier
@@ -355,12 +357,12 @@ def detect_tier(userStats, tiers=tiers):
 
 def is_not_ranker(mmr, tiers=tiers):
     for tier, ranges in tiers.items():
-        division = 5
+        division = 4
         for low, high in ranges:
-            division -= 1
             if low <= mmr < high:
                 userTier = tier
                 return f"{userTier} {division}"
+            division -= 1
 
 
 def is_ranker(rank):
