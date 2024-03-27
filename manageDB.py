@@ -1,7 +1,7 @@
 import sqlite3
 import time
 from datetime import datetime, timedelta
-from async_API import get_current_player_api
+from ER_API import get_current_player_api
 
 # 데이터베이스 연결 함수
 

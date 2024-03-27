@@ -2,9 +2,11 @@ from datetime import datetime
 import aiohttp
 import discord
 from discord.ext import commands
-import async_API as ER
+import ER_API as ER
+import ER_statistics as gg
 import os
 from dotenv import load_dotenv
+from dict_lib import char_english, weapon_english
 
 load_dotenv(verbose=True)
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -117,20 +119,74 @@ async def get_season_remaining(ctx):
 
 
 @bot.listen()
-async def on_message(ctx):  # 전적 검색 함수, 멀티서치 가능
-    """전적 명령어 인식하는 함수"""
+async def on_message(ctx):  #
+    """특정 명령어 인식하는 함수"""
     # 봇이 보낸 메시지 무시
     if ctx.author == bot.user:
         return
 
+    if ctx.content == "젠장 마커스":
+        await damn_it(ctx)
+        return
+
     if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
-        argus = ctx.content[3:]
+        argus = ctx.content[3:].strip()
         name_list = argus.split(" ")
-        if name_list[0] == "":
-            del name_list[0]
+
         files, embeds = await get_user_info(ctx.channel, name_list)
-        print(f"Success getUserInfo({name_list}) at {current_time()}")
+        print(f"Success get user info({name_list}) at {current_time()}")
         await ctx.reply(files=files, embeds=embeds)
+        return
+
+    if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
+        argus = ctx.content[3:].strip()
+        weapon, character = argus.split(" ")
+
+        try:
+            file, embed = await get_character_statistics(weapon, character)
+            await ctx.reply(file=file, embed=embed)
+            print(
+                f"Success get character statistics {weapon} {character} at {current_time()}"
+            )
+            return
+
+        except:
+            print("failed making embed")
+
+
+async def get_character_statistics(weapon, character):
+    """캐릭터 통계 가져와서 임베드로 보여주는 함수"""
+    weapon_E = weapon_english[f"{weapon}"]
+    character_E = char_english[f"{character}"]
+    s_dict = await gg.make_character_statistics(weapon_E, character_E)
+
+    embed = discord.Embed(
+        title=f"{weapon} {character}",
+        # description=f"()",
+        color=0x00FF00,
+        url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
+    )
+
+    pick_percent = s_dict["pick"][0]
+    win_percent = s_dict["win"][0]
+    get_RP_percent = s_dict["get_RP"][0]
+    pick_rank = s_dict["pick"][1][1:].replace("/", " / ")
+    win_rank = s_dict["win"][1][1:].replace("/", " / ")
+    get_RP_rank = s_dict["get_RP"][1][1:].replace("/", " / ")
+
+    embed.add_field(name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True)
+    embed.add_field(name="승률", value=f"{win_percent}\n{win_rank}", inline=True)
+    embed.add_field(
+        name="RP획득량", value=f"{get_RP_percent}\n{get_RP_rank}", inline=True
+    )
+
+    code = s_dict["code"]
+    file = discord.File(
+        f"./image/char_profile/{code}_{character_E}.png", filename="profile.png"
+    )
+    embed.set_thumbnail(url="attachment://profile.png")
+
+    return file, embed
 
 
 async def get_user_info(ctx, name_list):
@@ -177,7 +233,7 @@ async def get_user_info(ctx, name_list):
                 color=0x00FF00,
                 url=f"https://dak.gg/er/players/{name}",
             )
-        file_path = f"./image/charProfile/{code}_{char_name}.png"
+        file_path = f"./image/char_profile/{code}_{char_name}.png"
         embed.set_thumbnail(url=f"attachment://{char_name}.png")
         file = discord.File(file_path, filename=f"{char_name}.png")
         files_and_embeds.append((embed, file))
@@ -205,17 +261,6 @@ async def check_demigod_rating(ctx):
     rating = await ER.get_demigod_rating()
     await ctx.channel.send(f"> 데미갓 컷 : **{rating}** 점")
     print(f"Success checkDemigodRating {rating} at {current_time()}")
-
-
-@bot.listen()
-async def on_message(ctx):
-    """이스터에그 인식"""
-    # 봇이 보낸 메시지 무시
-    if ctx.author == bot.user:
-        return
-
-    if ctx.content == "젠장 마커스":
-        await damn_it(ctx)
 
 
 async def damn_it(ctx):

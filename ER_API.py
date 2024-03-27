@@ -1,99 +1,19 @@
-import time
 import aiohttp
-import asyncio
 import urllib.parse
 from bs4 import BeautifulSoup
-import json
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+from dict_lib import *
+
+import asyncio
+import json
+import time
+
 
 load_dotenv(verbose=True)
 ER_key = os.getenv("ER")
 steam_key = os.getenv("steam")
-tiers = {
-    "다이아몬드": [(4800, 5150), (5150, 5500), (5500, 5850), (5850, 6200)],
-    "플레티넘": [(3600, 3900), (3900, 4200), (4200, 4500), (4500, 4800)],
-    "골드": [(2600, 2850), (2850, 3100), (3100, 3350), (3350, 3600)],
-    "실버": [(1600, 1850), (1850, 2100), (2100, 2350), (2350, 2600)],
-    "브론즈": [(800, 1000), (1000, 1200), (1200, 1400), (1400, 1600)],
-    "아이언": [(0, 200), (200, 400), (400, 600), (600, 800)],
-}
-charCode = {
-    "jackie": 1,
-    "aya": 2,
-    "hyunwoo": 3,
-    "magnus": 4,
-    "fiora": 5,
-    "nadine": 6,
-    "zahir": 7,
-    "hart": 8,
-    "isol": 9,
-    "lidailin": 10,
-    "yuki": 11,
-    "hyejin": 12,
-    "xiukai": 13,
-    "sissela": 14,
-    "chiara": 15,
-    "adriana": 16,
-    "silvia": 17,
-    "shoichi": 18,
-    "emma": 19,
-    "lenox": 20,
-    "rozzi": 21,
-    "luke": 22,
-    "cathy": 23,
-    "adela": 24,
-    "bernice": 25,
-    "barbara": 26,
-    "alex": 27,
-    "sua": 28,
-    "leon": 29,
-    "eleven": 30,
-    "rio": 31,
-    "william": 32,
-    "nicky": 33,
-    "nathapon": 34,
-    "jan": 35,
-    "eva": 36,
-    "daniel": 37,
-    "jenny": 38,
-    "camilo": 39,
-    "chloe": 40,
-    "johann": 41,
-    "bianca": 42,
-    "celine": 43,
-    "echion": 44,
-    "mai": 45,
-    "aiden": 46,
-    "laura": 47,
-    "tia": 48,
-    "felix": 49,
-    "elena": 50,
-    "priya": 51,
-    "adina": 52,
-    "markus": 53,
-    "karla": 54,
-    "estelle": 55,
-    "piolo": 56,
-    "martina": 57,
-    "haze": 58,
-    "issac": 59,
-    "tazia": 60,
-    "irem": 61,
-    "theodore": 62,
-    "lyanh": 63,
-    "vanya": 64,
-    "debimariene": 65,
-    "arda": 66,
-    "abigail": 67,
-    "alonso": 68,
-    "leni": 69,
-    "tsubame": 70,
-    "kenneth": 71,
-    "katja": 72,
-}
-
 
 # async def getCurrentPlayer_crawl():  # 웹 크롤링해서 동접 가져오는 함수
 #     url = "https://steamcommunity.com/app/1049590"
@@ -393,11 +313,11 @@ def is_ranker(rank):
 #         return None
 
 
-def find_characte_name(most_character_code, charCode=charCode):
+def find_characte_name(most_character_code, char_code=char_code):
     """캐릭터 코드로 캐릭터 이름 찾는 함수
     반환값 : tuple(캐릭이름, 캐릭코드) /
     에러시 None"""
-    for name, code in charCode.items():
+    for name, code in char_code.items():
         if code == most_character_code:
             # print("Success: find user most character with code")
             return name, code
@@ -481,22 +401,23 @@ async def get_patchnote():
         return None
 
 
-# async def main():
-#     cnt = 0
-#     start_time = time.time()
-#     # while cnt < 50:
-#     #     now = await getUserSeasonData(4448847)
-#     #     print(now)
-#     #     cnt += 1
-
-#     stats = await getUserNum("절검")
-#     a = await getUserSeasonData(stats)
-#     print(json.dumps(a, ensure_ascii=False, indent=2))
-#     end_time = time.time()  # 종료 시간 기록
-#     total_time = end_time - start_time  # 전체 작업 시간 계산
-#     rounded_time = round(total_time, 2)
-#     print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
+async def get_routh(id):
+    url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
+    response_json = await add_header(url)
+    print(json.dumps(response_json, ensure_ascii=False, indent=2))
+    return response_json
 
 
-# if __name__ == "__main__":
-#     asyncio.run(main())
+async def main():
+    start_time = time.time()
+
+    a = await get_routh(123456)
+
+    end_time = time.time()  # 종료 시간 기록
+    total_time = end_time - start_time  # 전체 작업 시간 계산
+    rounded_time = round(total_time, 2)
+    print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
