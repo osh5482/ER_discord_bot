@@ -1,7 +1,7 @@
 import sqlite3
 import time
 from datetime import datetime, timedelta
-from async_API import getCurrentPlayer_api
+from async_API import get_current_player_api
 
 # 데이터베이스 연결 함수
 
@@ -56,7 +56,7 @@ def sort_by_time(ascending=True):
 def main():
     while True:
         current_unix_time = int(time.time())
-        currentPlayer = getCurrentPlayer_api()
+        currentPlayer = get_current_player_api()
         insert_data(current_unix_time, currentPlayer)
         delete_old_data()
         sort_by_time()
