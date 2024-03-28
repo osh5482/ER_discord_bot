@@ -81,6 +81,7 @@ async def get_user_num(nickname):
     parameters = f"?query={urllib.parse.quote(nickname)}"
     url = base + parameters
     response_json = await add_header(url)
+    print(response_json)
 
     try:
         # print(response_json)
@@ -408,16 +409,17 @@ async def get_routh(id):
     return response_json
 
 
-# async def main():
-#     start_time = time.time()
+async def main():
+    start_time = time.time()
 
-#     a = await get_routh(123456)
+    a = await get_iternity_rating()
+    print(a)
 
-#     end_time = time.time()  # 종료 시간 기록
-#     total_time = end_time - start_time  # 전체 작업 시간 계산
-#     rounded_time = round(total_time, 2)
-#     print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
+    end_time = time.time()  # 종료 시간 기록
+    total_time = end_time - start_time  # 전체 작업 시간 계산
+    rounded_time = round(total_time, 2)
+    print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
 
 
-# if __name__ == "__main__":
-#     asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

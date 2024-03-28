@@ -41,12 +41,12 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="실수로 눈젖빵 제작"))
 
 
-async def no_my_fault(ctx):
+async def not_my_fault(ctx):
     """서버에 문제 생겼을때 출력하는 함수"""
     print("Error: almost Network error")
     embed = discord.Embed(
         title=f"정보 불러오기 실패",
-        description=f"ER 서버 점검 혹은 네트워크 오류",
+        description=f"Api 네트워크 오류",
         color=0x00FF00,
     )
     file_path = f"./image/icon/not_mt_fault.png"
@@ -74,8 +74,10 @@ async def get_in_game_user(ctx):
         return
     # print(f"Start getInGameUser...")
     in_game_user = await ER.get_current_player_api()
-    if in_game_user >= 10000:
+    if in_game_user >= 12000:
         icon = "god_game"
+    if in_game_user >= 6000:
+        icon = "plz_play_game"
     else:
         icon = "mang_game"
     in_game_user = insert_comma(str(in_game_user))
@@ -105,7 +107,7 @@ async def get_season_remaining(ctx):
     lastday = await ER.end_current_season(curren_season_data)
 
     if current_season_name == aiohttp.ClientResponseError:
-        await no_my_fault(ctx)
+        await not_my_fault(ctx)
         return
     description = f"시즌 종료일 : **{lastday}**\n시즌 종료까지 **{day}일 {hour}시간 {minute}분** 남았습니다."
     embed = discord.Embed(
@@ -131,8 +133,11 @@ async def on_message(ctx):  #
 
     if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
         argus = ctx.content[3:].strip()
+        if argus == "":
+            await ctx.reply("> 닉네임을 입력해주세요.")
+            return
         name_list = argus.split(" ")
-
+        print(name_list)
         files, embeds = await get_user_info(ctx.channel, name_list)
         print(f"Success get user info({name_list}) at {current_time()}")
         await ctx.reply(files=files, embeds=embeds)
@@ -196,15 +201,15 @@ async def get_user_info(ctx, name_list):
     for name in name_list:
         user_tuple = await ER.get_user_num(name)
         if user_tuple == aiohttp.ClientResponseError:
-            await no_my_fault(ctx)
+            await not_my_fault(ctx)
             return
         rank_data = await ER.get_user_season_data(user_tuple)
         if rank_data == 404:
-            code = 0
-            char_name = "Nadja"
+            code = 404
+            char_name = "Leniticon"
             embed = discord.Embed(
                 title=f"{name}",
-                description="존재하지 않는 유저입니다.",
+                description="존재하지 않는 유저입니다.\n서버 점검 중일수도 있습니다.",
                 color=0x00FF00,
                 url=f"https://dak.gg/er/players/{name}",
             )
