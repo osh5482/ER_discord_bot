@@ -90,7 +90,7 @@ async def get_in_game_user(ctx):
     in_game_user = await ER.get_current_player_api()
     if in_game_user >= 12000:
         icon = "god_game"
-    if in_game_user >= 6000:
+    elif in_game_user >= 6000:
         icon = "plz_play_game"
     else:
         icon = "mang_game"
@@ -196,23 +196,22 @@ async def get_character_statistics(weapon, character):
 
     embed = discord.Embed(
         title=f"{weapon} {character}",
-        # description=f"()",
+        # description=f"다이아+ 통계",
         color=0x00FF00,
         url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
     )
 
     pick_percent = s_dict["pick"][0]
     win_percent = s_dict["win"][0]
-    get_RP_percent = s_dict["get_RP"][0]
+    get_RP = s_dict["get_RP"][0]
     pick_rank = s_dict["pick"][1][1:].replace("/", " / ")
     win_rank = s_dict["win"][1][1:].replace("/", " / ")
     get_RP_rank = s_dict["get_RP"][1][1:].replace("/", " / ")
 
     embed.add_field(name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True)
     embed.add_field(name="승률", value=f"{win_percent}\n{win_rank}", inline=True)
-    embed.add_field(
-        name="RP획득량", value=f"{get_RP_percent}\n{get_RP_rank}", inline=True
-    )
+    embed.add_field(name="RP획득량", value=f"{get_RP} RP\n{get_RP_rank}", inline=True)
+    embed.set_footer(text="가장 최근 패치의 다이아+ 3일 통계입니다")
 
     code = s_dict["code"]
     file = discord.File(
