@@ -1,4 +1,5 @@
 from datetime import datetime
+import time
 import aiohttp
 import discord
 from discord.ext import commands
@@ -15,6 +16,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="?", intents=intents)
+cooldowns = {}
 
 
 def current_time():
@@ -28,10 +30,20 @@ def current_time():
 
 @bot.event
 async def on_command_error(ctx, error):
-    """없는 명령어 무시하는 함수"""
+    """에러처리 함수"""
+
+    # 없는 명령어
     if isinstance(error, commands.CommandNotFound):
         return
-    raise error
+
+    # 명령어 쿨타임
+    if isinstance(error, commands.CommandOnCooldown):
+        if not hasattr(ctx, "command"):
+            command_name = "Easter Egg"
+        else:
+            command_name = ctx.command
+        print(f"{command_name} was requested on cooldown at {current_time()}")
+        return
 
 
 @bot.event
@@ -55,6 +67,7 @@ async def not_my_fault(ctx):
     await ctx.channel.send(file=file, embed=embed)
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 @bot.command(aliases=["ㅍㅊ", "패치", "ㅍㄴ", "패노", "패치노트"])
 async def get_recent_major_patchnote(ctx):
     """제일 최근 메이저패치 가져오는 함수"""
@@ -67,6 +80,7 @@ async def get_recent_major_patchnote(ctx):
     return
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 @bot.command(aliases=["ㄷㅈ", "동접"])
 async def get_in_game_user(ctx):
     """동접 확인 함수"""
@@ -93,6 +107,7 @@ async def get_in_game_user(ctx):
     print(f"Success getInGameUser {in_game_user} at {current_time()}")
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 @bot.command(aliases=["ㅅㅈ", "시즌"])
 async def get_season_remaining(ctx):
     """남은 시즌 확인 함수"""
@@ -127,41 +142,52 @@ async def on_message(ctx):  #
     if ctx.author == bot.user:
         return
 
-    if "끝까지 함께하겠다 이터널리턴" in ctx.content:
-        await ER_forever(ctx)
-        return
+    if ctx.content.startswith("?"):
 
-    if ctx.content == "젠장 마커스":
-        await damn_it(ctx)
-        return
-
-    if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
-        argus = ctx.content[3:].strip()
-        if argus == "":
-            await ctx.reply("> 닉네임을 입력해주세요.")
-            return
-        name_list = argus.split(" ")
-        files, embeds = await get_user_info(ctx.channel, name_list)
-        print(f"Success get user info({name_list}) at {current_time()}")
-        await ctx.reply(files=files, embeds=embeds)
-        return
-
-    if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
-        argus = ctx.content[3:].strip()
-        weapon, character = argus.split(" ")
-
-        try:
-            file, embed = await get_character_statistics(weapon, character)
-            await ctx.reply(file=file, embed=embed)
-            print(
-                f"Success get character statistics {weapon} {character} at {current_time()}"
-            )
+        if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
+            argus = ctx.content[3:].strip()
+            if argus == "":
+                await ctx.reply("> 닉네임을 입력해주세요.")
+                return
+            name_list = argus.split(" ")
+            files, embeds = await get_user_info(ctx.channel, name_list)
+            print(f"Success get user info({name_list}) at {current_time()}")
+            await ctx.reply(files=files, embeds=embeds)
             return
 
-        except:
-            print("failed making embed")
+        if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
+            argus = ctx.content[3:].strip()
+            weapon, character = argus.split(" ")
+
+            try:
+                file, embed = await get_character_statistics(weapon, character)
+                await ctx.reply(file=file, embed=embed)
+                print(
+                    f"Success get character statistics {weapon} {character} at {current_time()}"
+                )
+                return
+
+            except:
+                print("failed making embed")
+
+    else:
+        if "끝까지 함께하겠다 이터널리턴" in ctx.content:
+            try:
+                await ER_forever(ctx)
+            except commands.CommandOnCooldown as e:
+                await on_command_error(ctx, e)
+                return
+
+        if "젠장 마커스" in ctx.content:
+            try:
+                await damn_it(ctx)
+            except commands.CommandOnCooldown as e:
+                await on_command_error(ctx, e)
+                return
+            return
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 async def get_character_statistics(weapon, character):
     """캐릭터 통계 가져와서 임베드로 보여주는 함수"""
     weapon_E = weapon_english[f"{weapon}"]
@@ -251,6 +277,7 @@ async def get_user_info(ctx, name_list):
     return files, embeds
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 @bot.command(aliases=["ㅇㅌ", "이터", "이터니티"])
 async def check_iternity_rating(ctx):
     """이터 컷 보는 함수"""
@@ -261,6 +288,7 @@ async def check_iternity_rating(ctx):
     print(f"Success checkDIternityRating {rating} at {current_time()}")
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 @bot.command(aliases=["ㄷㅁ", "데미", "데미갓", "뎀갓"])
 async def check_demigod_rating(ctx):
     """데미갓 컷 보는 함수"""
@@ -271,22 +299,36 @@ async def check_demigod_rating(ctx):
     print(f"Success checkDemigodRating {rating} at {current_time()}")
 
 
+@commands.cooldown(1, 10, commands.BucketType.channel)
 async def damn_it(ctx):
     """젠장 마커스"""
-    with open("./image/damn_it_markus.png", "rb") as f:
-        image = discord.File(f)
-    await ctx.reply(file=image)
-    print(f"젠장 마커스 난 네가 좋다 / {current_time()}")
+    cooldown_time = 10
+    func_name = "damn_it"
+    if await check_cooldown(func_name, cooldown_time):
+        with open("./image/damn_it_markus.png", "rb") as f:
+            image = discord.File(f)
+        await ctx.reply(file=image)
+        print(f"젠장 마커스 난 네가 좋다 / {current_time()}")
+    else:
+        raise commands.CommandOnCooldown(
+            cooldown_time, ctx.channel.id, commands.BucketType.channel
+        )
     return
 
 
 async def ER_forever(ctx):
     """지옥끝까지 함께하겠다 이터널리턴!!!!"""
-    with open("./image/ER_forever.jpg", "rb") as f:
-        image = discord.File(f)
-    await ctx.reply(file=image)
-    print(f"지옥끝까지 함께하겠다 이터널리턴!!!! / {current_time()}")
-    return
+    cooldown_time = 10
+    func_name = "ER_forever"
+    if await check_cooldown(func_name, cooldown_time):
+        with open("./image/ER_forever.jpg", "rb") as f:
+            image = discord.File(f)
+        await ctx.reply(file=image)
+        print(f"지옥끝까지 함께하겠다 이터널리턴!!!! / {current_time()}")
+    else:
+        raise commands.CommandOnCooldown(
+            cooldown_time, ctx.channel.id, commands.BucketType.channel
+        )
 
 
 def insert_comma(data, unit=3):
@@ -305,6 +347,19 @@ def insert_comma(data, unit=3):
         result.append(data[i : i + unit])
 
     return ",".join(result)
+
+
+async def check_cooldown(func_name, cooldown_time):
+    """함수 쿨다운 체크"""
+    now = time.time()
+    if func_name in cooldowns:
+        last_call, cooldown = cooldowns[func_name]
+        if now - last_call < cooldown:
+            # remaining = cooldown - (now - last_call)
+            # print(f"Function {func_name} is on cooldown for {remaining:.2f} seconds.")
+            return False
+    cooldowns[func_name] = (now, cooldown_time)
+    return True
 
 
 bot.run(TOKEN)
