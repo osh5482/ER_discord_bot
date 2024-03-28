@@ -127,6 +127,10 @@ async def on_message(ctx):  #
     if ctx.author == bot.user:
         return
 
+    if "끝까지 함께하겠다 이터널리턴" in ctx.content:
+        await ER_forever(ctx)
+        return
+
     if ctx.content == "젠장 마커스":
         await damn_it(ctx)
         return
@@ -273,6 +277,15 @@ async def damn_it(ctx):
         image = discord.File(f)
     await ctx.reply(file=image)
     print(f"젠장 마커스 난 네가 좋다 / {current_time()}")
+    return
+
+
+async def ER_forever(ctx):
+    """지옥끝까지 함께하겠다 이터널리턴!!!!"""
+    with open("./image/ER_forever.png", "rb") as f:
+        image = discord.File(f)
+    await ctx.reply(file=image)
+    print(f"지옥끝까지 함께하겠다 이터널리턴!!!! / {current_time()}")
     return
 
 
