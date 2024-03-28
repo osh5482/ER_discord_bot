@@ -258,7 +258,7 @@ async def get_user_season_data(user_tuple):
 #                 return data["message"]
 
 
-def detect_tier(userStats, tiers=tiers):
+def detect_tier(userStats):
     """
     mmr에 따른 티어 탐지하는 함수
     반환값 : str(티어)"""
