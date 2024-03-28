@@ -81,7 +81,6 @@ async def get_user_num(nickname):
     parameters = f"?query={urllib.parse.quote(nickname)}"
     url = base + parameters
     response_json = await add_header(url)
-    print(response_json)
 
     try:
         # print(response_json)
