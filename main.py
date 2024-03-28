@@ -137,7 +137,6 @@ async def on_message(ctx):  #
             await ctx.reply("> 닉네임을 입력해주세요.")
             return
         name_list = argus.split(" ")
-        print(name_list)
         files, embeds = await get_user_info(ctx.channel, name_list)
         print(f"Success get user info({name_list}) at {current_time()}")
         await ctx.reply(files=files, embeds=embeds)
