@@ -147,7 +147,9 @@ async def on_message(ctx):  #
         if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
             argus = ctx.content[3:].strip()
             if argus == "":
-                await ctx.reply("> 닉네임을 입력해주세요.")
+                await ctx.reply(
+                    "> 닉네임을 입력해주세요.\n띄어쓰기로 멀티서치가 가능합니다."
+                )
                 return
             name_list = argus.split(" ")
             files, embeds = await get_user_info(ctx.channel, name_list)
