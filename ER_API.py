@@ -408,11 +408,17 @@ async def get_routh(id):
     return response_json
 
 
+async def get_meta_data(meta):
+    url = f"https://open-api.bser.io/v1/data/{meta}"
+    response_json = await add_header(url)
+    return response_json
+
+
 async def main():
     start_time = time.time()
 
-    a = await get_iternity_rating()
-    print(a)
+    a = await get_meta_data("hash")
+    print(json.dumps(a, ensure_ascii=False, indent=2))
 
     end_time = time.time()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
