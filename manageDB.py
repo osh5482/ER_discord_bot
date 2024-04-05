@@ -3,6 +3,7 @@ import sqlite3
 import time
 from datetime import datetime, timedelta
 from functions.ER_API import get_current_player_api
+from functions.utill import current_time
 
 
 # 데이터베이스 연결 함수
@@ -58,12 +59,13 @@ async def main():
     while True:
         conn, c = connect_DB()
         current_unix_time = int(time.time())
+        now = current_time()
         currentPlayer = await get_current_player_api()
         insert_data(c, current_unix_time, currentPlayer)
         delete_old_data(c)
         sort_by_time(c)
         # print(f"24시간 동안 최고 동접: {most_play}")
-        print(f"save player count at {current_unix_time}")
+        print(f"save player count at {now}")
 
         c.close()
         conn.close()
