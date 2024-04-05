@@ -1,5 +1,5 @@
 import json
-from dict_lib import *
+from functions.dict_lib import *
 from bs4 import BeautifulSoup
 import aiohttp
 
