@@ -68,7 +68,7 @@ async def main():
         c.close()
         conn.close()
 
-        await asyncio.sleep(5)  # 5분 대기
+        await asyncio.sleep(300)  # 5분 대기
 
 
 async def load_24h():
