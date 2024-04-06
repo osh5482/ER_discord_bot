@@ -5,7 +5,7 @@ import functions.ER_API as ER
 import functions.ER_statistics as gg
 from functions.dict_lib import char_english, weapon_english
 from functions.utill import *
-from manageDB import load_24h
+from functions.manageDB import load_24h
 
 
 class game(commands.Cog):
@@ -21,7 +21,7 @@ class game(commands.Cog):
         # print(f"Start getRecentPatchNote...")
         RecentMajorPatchNote = await ER.get_patchnote()
         await ctx.send(RecentMajorPatchNote)
-        print(f"Success getRecentPatchNote! at {current_time()}")
+        print(f"[{current_time()}] Success getRecentPatchNote")
         return
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -56,7 +56,7 @@ class game(commands.Cog):
         file = discord.File(f"./image/icon/{icon}.png", filename="leniticon.png")
         embed.set_thumbnail(url="attachment://leniticon.png")
         await ctx.send(file=file, embed=embed)
-        print(f"Success getInGameUser {in_game_user} at {current_time()}")
+        print(f"[{current_time()}] Success getInGameUser {in_game_user}")
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㅅㅈ", "시즌"])
@@ -83,7 +83,7 @@ class game(commands.Cog):
         )
 
         await ctx.channel.send(embed=embed)
-        print(f"Success getSeasonRemaining at {current_time()}")
+        print(f"[{current_time()}] Success getSeasonRemaining")
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㄷㅁ", "데미", "데미갓", "뎀갓"])
@@ -93,7 +93,7 @@ class game(commands.Cog):
             return
         rating = await ER.get_demigod_rating()
         await ctx.channel.send(f"> 데미갓 컷 : **{rating}** 점")
-        print(f"Success checkDemigodRating {rating} at {current_time()}")
+        print(f"[{current_time()}] Success checkDemigodRating {rating}")
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㅇㅌ", "이터", "이터니티"])
@@ -103,7 +103,7 @@ class game(commands.Cog):
             return
         rating = await ER.get_iternity_rating()
         await ctx.channel.send(f"> 이터니티 컷 : **{rating}** 점")
-        print(f"Success checkDIternityRating {rating} at {current_time()}")
+        print(f"[{current_time()}] Success checkDIternityRating {rating}")
 
     @commands.Cog.listener()
     async def on_message(self, ctx):  #
@@ -123,7 +123,7 @@ class game(commands.Cog):
                     return
                 name_list = argus.split(" ")
                 files, embeds = await self.get_user_info(ctx.channel, name_list)
-                print(f"Success get user info({name_list}) at {current_time()}")
+                print(f"[{current_time()}] Success get user info {name_list}")
                 await ctx.reply(files=files, embeds=embeds)
                 return
 
@@ -135,7 +135,7 @@ class game(commands.Cog):
                     file, embed = await self.get_character_statistics(weapon, character)
                     await ctx.reply(file=file, embed=embed)
                     print(
-                        f"Success get character statistics {weapon} {character} at {current_time()}"
+                        f"[{current_time()}] Success get character statistics {weapon} {character}"
                     )
                     return
 

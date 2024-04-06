@@ -4,7 +4,6 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 from functions.utill import *
-import manageDB as DB
 
 
 intents = discord.Intents.default()
@@ -15,40 +14,58 @@ bot = commands.Bot(command_prefix="?", intents=intents)
 async def load_extensions():
     for filename in os.listdir("cogs"):
         if filename.endswith(".py"):
-            await bot.load_extension(f"cogs.{filename[:-3]}")
-            print(f"{filename} cogs load success")
+            if filename == "test.py":
+                pass
+            else:
+                await bot.load_extension(f"cogs.{filename[:-3]}")
+                print(f"[{current_time()}] {filename} was sucessfully loaded")
+    print("All cogs successfully loaded")
 
 
 @bot.event
 async def on_ready():
     """봇 시작하면 로그인 로그 print하고 상태 띄워주는 함수"""
-    print(f"logged in as {bot.user} at {current_time()}")
+    print(f"[{current_time()}] Logged in as {bot.user}")
     await bot.change_presence(activity=discord.Game(name="실수로 눈젖빵 제작"))
 
 
-@bot.event
-async def on_command_error(ctx, error):
-    """에러처리 함수"""
+@bot.command(hidden=True)
+@commands.is_owner()
+async def load(ctx: commands.Context, *, module: str):
+    try:
+        await bot.load_extension(f"cogs.{module}")
+        print(f"[{current_time()}] {module} was sucessfully loaded")
+    except commands.ExtensionError as e:
+        await ctx.send(f"{e.__class__.__name__}: {e}")
 
-    # 없는 명령어
-    if isinstance(error, commands.CommandNotFound):
-        return
 
-    # 명령어 쿨타임
-    if isinstance(error, commands.CommandOnCooldown):
-        if not hasattr(ctx, "command"):
-            command_name = "Easter Egg"
-        else:
-            command_name = ctx.command
-        print(f"{command_name} was requested on cooldown at {current_time()}")
-        return
+@bot.command(hidden=True)
+@commands.is_owner()
+async def unload(ctx: commands.Context, *, module: str):
+    try:
+        await bot.unload_extension(f"cogs.{module}")
+        print(f"[{current_time()}] {module} was sucessfully unloaded")
+    except commands.ExtensionError as e:
+        await ctx.send(f"{e.__class__.__name__}: {e}")
+
+
+@bot.command(hidden=True)
+@commands.is_owner()
+async def reload(ctx: commands.Context, *, module: str):
+    try:
+        await bot.reload_extension(f"cogs.{module}")
+        print(f"[{current_time()}] {module} was sucessfully reloaded")
+    except commands.ExtensionError as e:
+        await ctx.send(f"{e.__class__.__name__}: {e}")
 
 
 async def main():
+    """봇 실행 메인 함수"""
     await load_extensions()
     load_dotenv(verbose=True)
     TOKEN = os.getenv("DISCORD_TOKEN")
     await bot.start(TOKEN)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
