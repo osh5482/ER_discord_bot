@@ -5,7 +5,7 @@ import functions.ER_API as ER
 import functions.ER_statistics as gg
 from functions.dict_lib import char_english, weapon_english
 from functions.utill import *
-from functions.manageDB import load_24h
+from functions.manageDB import *
 
 
 class game(commands.Cog):
@@ -21,7 +21,9 @@ class game(commands.Cog):
         # print(f"Start getRecentPatchNote...")
         RecentMajorPatchNote = await ER.get_patchnote()
         await ctx.send(RecentMajorPatchNote)
-        print(f"[{current_time()}] Success getRecentPatchNote")
+        print(
+            f"[{current_time()}] Success getRecentPatchNote\nPatchNote url: {RecentMajorPatchNote}"
+        )
         return
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -30,8 +32,18 @@ class game(commands.Cog):
         """동접 확인 함수"""
         if ctx.author == self.bot.user:
             return
-        # print(f"Start getInGameUser...")
+
+        current_unix_time = int(time.time())
+        now = current_time()
         in_game_user = await ER.get_current_player_api()
+
+        conn, c = connect_DB()
+        create_table(c)
+        insert_data(c, current_unix_time, now, in_game_user)
+
+        c.close()
+        conn.close()
+
         most_24h = await load_24h()
 
         if in_game_user >= 12000:
@@ -56,7 +68,8 @@ class game(commands.Cog):
         file = discord.File(f"./image/icon/{icon}.png", filename="leniticon.png")
         embed.set_thumbnail(url="attachment://leniticon.png")
         await ctx.send(file=file, embed=embed)
-        print(f"[{current_time()}] Success getInGameUser {in_game_user}")
+
+        print(f"[{current_time()}] Success getInGameUser {in_game_user} and save on DB")
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㅅㅈ", "시즌"])

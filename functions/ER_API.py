@@ -415,14 +415,15 @@ async def get_meta_data(meta):
 
 
 async def main():
-    start_time = time.time()
+    start_time = time.perf_counter()
 
-    a = await get_meta_data("hash")
+    # a = await get_routh(19525)
+    a = await get_meta_data("ItemWeapon")
     print(json.dumps(a, ensure_ascii=False, indent=2))
 
-    end_time = time.time()  # 종료 시간 기록
+    end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
-    rounded_time = round(total_time, 2)
+    rounded_time = round(total_time, 3)
     print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
 
 

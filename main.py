@@ -59,6 +59,22 @@ async def reload(ctx: commands.Context, *, module: str):
         await ctx.send(f"{e.__class__.__name__}: {e}")
 
 
+@bot.command(hidden=True)
+@commands.is_owner()
+async def all_reload(ctx: commands.Context):
+    for filename in os.listdir("cogs"):
+        try:
+            if filename.endswith(".py"):
+                if filename == "test.py":
+                    pass
+                else:
+                    await bot.reload_extension(f"cogs.{filename[:-3]}")
+                    print(f"[{current_time()}] {filename} was sucessfully reloaded")
+        except commands.ExtensionError as e:
+            await ctx.send(f"{e.__class__.__name__}: {e}")
+    print("All cogs successfully reloaded")
+
+
 async def main():
     """봇 실행 메인 함수"""
     await load_extensions()
