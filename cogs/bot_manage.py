@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord.ext import commands
 from functions.utill import current_time
@@ -13,7 +14,8 @@ class bot_manage(commands.Cog):
         new_server = guild.system_channel
         server_info = (guild.name, guild.id)
         if new_server:
-            await new_server.send("아 ㅁㅊ 눈젖빵 만들었어")
+            asyncio.sleep(1)
+            await new_server.send("> 아 ㅁㅊ 눈젖빵 만들었어")
         print(f"[{current_time()}] Bot was invited at {server_info}")
 
     @commands.Cog.listener()
