@@ -5,8 +5,9 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-# from functions.dict_lib import *
-from dict_lib import *
+from functions.dict_lib import *
+
+# from dict_lib import *
 
 import asyncio
 import json
