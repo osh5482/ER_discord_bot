@@ -79,6 +79,21 @@ async def all_reload(ctx: commands.Context):
     print("All cogs successfully reloaded")
 
 
+@bot.command(aliases=["ㄷㅇ", "도움", "도움말"])
+async def command_list(ctx):
+    msg = """```명령어 리스트:
+    !ㄷㅈ : 스팀 동시 접속자를 확인합니다.
+    !ㅍㄴ : 가장 최근 메이저패치의 패치노트를 가져옵니다.
+    !ㅅㅈ : 현재 시즌의 기한을 확인합니다.
+    !ㄷㅁ : 현재 데미캇 레이팅 컷을 확인합니다.
+    !ㅇㅌ : 현재 이터니티 레이팅 컷을 확인합니다.
+    !ㅈㅈ<닉네임> : 유저의 랭겜 전적을 가져옵니다. 띄어쓰기로 멀티서치가 가능합니다.
+    !ㅌㄱ<무기><캐릭터> : 캐릭터의 통계를 가져옵니다.```"""
+
+    await ctx.channel.send(msg)
+    return
+
+
 async def main():
     """봇 실행 메인 함수"""
     await load_extensions()
