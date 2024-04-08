@@ -84,7 +84,7 @@ async def main():
 
 
 @bot.command(hidden=True)
-@bot.is_owner()
+@commands.is_owner()
 async def stop(ctx):
     await ctx.send("봇을 재실행합니다.")
     await bot.close()
