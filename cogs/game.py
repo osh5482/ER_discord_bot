@@ -157,11 +157,7 @@ class game(commands.Cog):
                         if word.endswith(name):
                             character = name
                             weapon = word[: -len(name)]
-
-                            if weapon in char_weapons[name]:
-                                break
-                            else:
-                                await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                            break
 
                 if len(weapon_character) > 2:
                     await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
