@@ -148,6 +148,11 @@ class game(commands.Cog):
 
             if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
                 argus = ctx.content[3:].strip()
+
+                if argus == "":
+                    await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                    return
+
                 weapon_character = argus.split(" ")
 
                 if len(weapon_character) == 1:
@@ -157,22 +162,18 @@ class game(commands.Cog):
                         if word.endswith(name):
                             character = name
                             weapon = word[: -len(name)]
+                            finish = True
                             break
 
-                    for weapons in char_weapons.values():
-                        for name in weapons:
-                            if word.startswith(name):
-                                weapon = name
-                                character = word[len(name) :]
-                                finish = True
-                                break
-
-                        if finish:
-                            break
-
-                    if finish is False:
-                        await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
-                        return
+                    if finish == False:
+                        for weapons in char_weapons.values():
+                            for name in weapons:
+                                if word.startswith(name):
+                                    weapon = name
+                                    character = word[len(name) :]
+                                    return
+                    await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                    return
 
                 if len(weapon_character) > 2:
                     await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
