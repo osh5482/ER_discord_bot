@@ -108,9 +108,9 @@ async def stop(ctx):
 @commands.is_owner()
 async def servers(ctx):
     servers = bot.guilds
-    server_list = [f"{server.name} (ID: {server.id})" for server in servers]
-    for i in server_list:
-        print(server_list[i])
+    server_list = [(server.name, server.id) for server in servers]
+    for server_info in server_list:
+        print(server_info)
     print(f"cnt: {len(server_list)}")
 
 
