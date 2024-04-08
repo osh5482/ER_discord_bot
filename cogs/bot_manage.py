@@ -29,8 +29,8 @@ class bot_manage(commands.Cog):
         server_list = [f"{server.name} (ID: {server.id})" for server in servers]
         servers_str = "\n".join(server_list)
         print(servers_str)
-        print(f"[{current_time()}] cnt: {len(server_list)}")
-        await ctx.channel.send(servers_str)
+        print(f"[{current_time()}] server cnt: {len(server_list)}")
+        # await ctx.channel.send(servers_str)
 
 
 async def setup(bot):
