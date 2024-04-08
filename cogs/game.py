@@ -150,16 +150,16 @@ class game(commands.Cog):
                 argus = ctx.content[3:].strip()
                 weapon_character = argus.split(" ")
                 if len(weapon_character) != 2:
-                    await ctx.reply("!ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                    await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
                     return
                 weapon = weapon_character[0]
                 character = weapon_character[1]
 
-                if weapon not in weapon_english.keys:
+                if weapon not in weapon_english.keys():
                     await ctx.reply(f"{weapon}은 존재하지 않는 무기입니다.")
                     return
 
-                if character not in char_weapons.keys:
+                if character not in char_weapons.keys():
                     await ctx.reply(f"{character}은 존재하지 않는 캐릭터입니다.")
                     return
 
