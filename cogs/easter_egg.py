@@ -20,6 +20,7 @@ class easter_egg(commands.Cog):
         if "끝까지 함께하겠다 이터널리턴" in message.content:
             try:
                 await self.ER_forever(message)
+                print_user_server(message)
                 return
             except commands.CommandOnCooldown as e:
                 await self.on_command_error(message, e)
@@ -29,6 +30,7 @@ class easter_egg(commands.Cog):
         if "젠장 마커스" in message.content:
             try:
                 await self.damn_it(message)
+                print_user_server(message)
                 return
             except commands.CommandOnCooldown as e:
                 await self.on_command_error(message, e)

@@ -63,4 +63,4 @@ async def not_my_fault(ctx):
 def print_user_server(ctx):
     user_name = ctx.author.name
     server_name = ctx.guild.name
-    print(f"└Process by {user_name} in {server_name}")
+    print(f"└Processed by {user_name} in {server_name}")
