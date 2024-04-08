@@ -2,6 +2,7 @@ import asyncio
 import sqlite3
 import time
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 
 
 def connect_DB():
@@ -62,9 +63,36 @@ async def load_24h():
     return most_24h
 
 
+async def get_data():
+    conn, c = connect_DB()
+    sort_by_time(c)
+
+    c.execute("SELECT * FROM my_data")
+    rows = c.fetchall()
+
+    data_list = []
+    for row in rows:
+        data_list.append(row)
+
+    c.close()
+    conn.close()
+    print(data_list)
+    return data_list
+
+
+async def creat_graph(data_list):
+    x_data = [row[1].split(" ")[1][:-3] for row in data_list]
+    y_data = [row[-1] for row in data_list]
+
+    plt.plot(x_data, y_data)
+    # plt.xticks([])
+    plt.title("24h in game user")
+    plt.show()
+
+
 async def main():
-    a = await load_24h()
-    print(a)
+    a = await get_data()
+    await creat_graph(a)
 
 
 if __name__ == "__main__":

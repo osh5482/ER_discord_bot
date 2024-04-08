@@ -31,6 +31,12 @@ class save_data(commands.Cog):
         c.close()
         conn.close()
 
+    # @commands.command(aliases=["그래프"])
+    # async def print_graph(ctx):
+    #     data_list = await get_data()
+    #     await creat_graph(data_list)
+    #     return
+
 
 async def setup(bot):
     await bot.add_cog(save_data(bot))

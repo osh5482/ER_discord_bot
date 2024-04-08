@@ -149,11 +149,27 @@ class game(commands.Cog):
             if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
                 argus = ctx.content[3:].strip()
                 weapon_character = argus.split(" ")
-                if len(weapon_character) != 2:
+
+                if len(weapon_character) == 1:
+                    word = weapon_character[0]
+
+                    for name in char_weapons.keys():
+                        if word.endswith(name):
+                            character = name
+                            weapon = word[: -len(name)]
+
+                            if weapon in char_weapons[name]:
+                                break
+                            else:
+                                await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+
+                if len(weapon_character) > 2:
                     await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
                     return
-                weapon = weapon_character[0]
-                character = weapon_character[1]
+
+                if len(weapon_character) == 2:
+                    weapon = weapon_character[0]
+                    character = weapon_character[1]
 
                 if weapon not in weapon_english.keys():
                     await ctx.reply(f"{weapon}은 존재하지 않는 무기입니다.")
