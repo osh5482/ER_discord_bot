@@ -91,6 +91,8 @@ async def command_list(ctx):
     ㅌㄱ<무기><캐릭터> : 캐릭터의 통계를 가져옵니다.```"""
 
     await ctx.channel.send(msg)
+    print(f"[{current_time()}] Success command_list")
+    print_user_server(ctx)
     return
 
 
