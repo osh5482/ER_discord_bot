@@ -86,9 +86,9 @@ async def main():
 @bot.command(hidden=True)
 @commands.is_owner()
 async def stop(ctx):
-    await ctx.send("봇을 재실행합니다.")
+    await ctx.send("봇을 종료합니다.")
+    print(f"[{current_time()}]Bot was stopped")
     await bot.close()
-    await main()
 
 
 if __name__ == "__main__":

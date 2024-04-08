@@ -24,6 +24,7 @@ class game(commands.Cog):
         print(
             f"[{current_time()}] Success getRecentPatchNote\nPatchNote url: {RecentMajorPatchNote}"
         )
+        print_user_server(ctx)
         return
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -70,6 +71,7 @@ class game(commands.Cog):
         await ctx.send(file=file, embed=embed)
 
         print(f"[{current_time()}] Success getInGameUser {in_game_user} and save on DB")
+        print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㅅㅈ", "시즌"])
@@ -97,6 +99,7 @@ class game(commands.Cog):
 
         await ctx.channel.send(embed=embed)
         print(f"[{current_time()}] Success getSeasonRemaining")
+        print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㄷㅁ", "데미", "데미갓", "뎀갓"])
@@ -107,6 +110,7 @@ class game(commands.Cog):
         rating = await ER.get_demigod_rating()
         await ctx.channel.send(f"> 데미갓 컷 : **{rating}** 점")
         print(f"[{current_time()}] Success checkDemigodRating {rating}")
+        print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
     @commands.command(aliases=["ㅇㅌ", "이터", "이터니티"])
@@ -117,6 +121,7 @@ class game(commands.Cog):
         rating = await ER.get_iternity_rating()
         await ctx.channel.send(f"> 이터니티 컷 : **{rating}** 점")
         print(f"[{current_time()}] Success checkDIternityRating {rating}")
+        print_user_server(ctx)
 
     @commands.Cog.listener()
     async def on_message(self, ctx):  #
@@ -137,6 +142,7 @@ class game(commands.Cog):
                 name_list = argus.split(" ")
                 files, embeds = await self.get_user_info(ctx.channel, name_list)
                 print(f"[{current_time()}] Success get user info {name_list}")
+                print_user_server(ctx)
                 await ctx.reply(files=files, embeds=embeds)
                 return
 
@@ -157,6 +163,7 @@ class game(commands.Cog):
                     print(
                         f"[{current_time()}] Success get character statistics {weapon} {character}"
                     )
+                    print_user_server(ctx)
                     return
 
                 except:

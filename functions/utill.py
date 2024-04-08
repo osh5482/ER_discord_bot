@@ -58,3 +58,9 @@ async def not_my_fault(ctx):
     embed.set_thumbnail(url="attachment://Error.png")
     file = discord.File(file_path, filename="Error.png")
     await ctx.channel.send(file=file, embed=embed)
+
+
+def print_user_server(ctx):
+    user_name = ctx.author.name
+    server_name = ctx.guild.name
+    print(f"└Process by {user_name} in {server_name}")
