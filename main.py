@@ -90,17 +90,18 @@ async def main():
 @bot.event
 async def on_guild_join(guild):
     """새로운 서버에 초대받았을때 메세지 출력"""
-    new_server = guild.sysyem_channel
+    new_server = guild.system_channel
     server_info = (guild.name, guild.id)
-    await new_server.send("아 ㅁㅊ 눈젖빵 만들었어")
-    print(f"Bot was invites at {server_info}")
+    if new_server:
+        await new_server.send("아 ㅁㅊ 눈젖빵 만들었어")
+    print(f"[{current_time()}] Bot was invites at {server_info}")
 
 
 @bot.event
 async def on_guild_remove(guild):
     """서버에서 봇 내보내질때 로그 남김"""
     server_info = (guild.name, guild.id)
-    print(f"Bot was kicked out at {server_info}")
+    print(f"[{current_time()}] Bot was kicked out at {server_info}")
 
 
 @bot.command(hidden=True, name="서버")
@@ -110,7 +111,7 @@ async def servers(ctx):
     server_list = [(server.name, server.id) for server in servers]
     for server_info in server_list:
         print(server_info)
-    print(f"cnt: {len(server_list)}")
+    print(f"[{current_time()}] cnt: {len(server_list)}")
 
 
 if __name__ == "__main__":
