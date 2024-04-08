@@ -4,7 +4,9 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from functions.dict_lib import *
+
+# from functions.dict_lib import *
+from dict_lib import *
 
 import asyncio
 import json
@@ -414,13 +416,37 @@ async def get_meta_data(meta):
     return response_json
 
 
+async def get_user_recent_games_10(user_num, next=None):
+    """유저의 최근 10게임 반환
+    반환값 : dict"""
+    url = f"https://open-api.bser.io/v1/user/games/{user_num}"
+    if next is not None:
+        url += f"?next={next}"
+    response_json = await add_header(url)
+
+    return response_json
+
+
+async def get_user_recent_games_90d(user_num):
+    games = []
+    next = None
+
+    while True:
+        result = await get_user_recent_games_10(user_num, next=next)
+        games.append(result)
+        if "next" not in result.keys():
+            break
+        next = result["next"]
+
+    return games
+
+
 async def main():
     start_time = time.perf_counter()
-
-    # a = await get_routh(19525)
-    a = await get_meta_data("ItemWeapon")
-    print(json.dumps(a, ensure_ascii=False, indent=2))
-
+    id, _ = await get_user_num("아니tlqk내솔로가")
+    a = await get_user_recent_games_90d(id)
+    # print(json.dumps(a, ensure_ascii=False, indent=2))
+    print(len(a))
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
     rounded_time = round(total_time, 3)
