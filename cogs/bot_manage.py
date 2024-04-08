@@ -26,7 +26,7 @@ class bot_manage(commands.Cog):
     @commands.is_owner()
     async def servers(self, ctx):
         servers = self.bot.guilds
-        server_list = [f"{server[0]} (ID: {server[1]})" for server in servers]
+        server_list = [f"{server.name} (ID: {server.id})" for server in servers]
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] cnt: {len(server_list)}")
