@@ -157,6 +157,7 @@ class game(commands.Cog):
 
                 if len(weapon_character) == 1:
                     word = weapon_character[0]
+                    finish = False
 
                     for name in char_weapons.keys():
                         if word.endswith(name):
