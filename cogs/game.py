@@ -154,9 +154,19 @@ class game(commands.Cog):
                     return
                 weapon = weapon_character[0]
                 character = weapon_character[1]
+
+                if weapon not in weapon_english.keys:
+                    await ctx.reply(f"{weapon}은 존재하지 않는 무기입니다.")
+                    return
+
+                if character not in char_weapons.keys:
+                    await ctx.reply(f"{character}은 존재하지 않는 캐릭터입니다.")
+                    return
+
                 if weapon not in char_weapons[character]:
                     await ctx.reply(f"{character}는 {weapon}을 사용하지 않습니다.")
                     return
+
                 try:
                     file, embed = await self.get_character_statistics(weapon, character)
                     await ctx.reply(file=file, embed=embed)
