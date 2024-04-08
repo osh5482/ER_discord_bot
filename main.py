@@ -83,5 +83,13 @@ async def main():
     await bot.start(TOKEN)
 
 
+@bot.command(hidden=True)
+@bot.is_owner()
+async def stop(ctx):
+    await ctx.send("봇을 재실행합니다.")
+    await bot.close()
+    await main()
+
+
 if __name__ == "__main__":
     asyncio.run(main())

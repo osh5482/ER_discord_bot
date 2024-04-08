@@ -3,7 +3,7 @@ import discord
 from discord.ext import commands
 import functions.ER_API as ER
 import functions.ER_statistics as gg
-from functions.dict_lib import char_english, weapon_english
+from functions.dict_lib import char_english, weapon_english, char_weapons
 from functions.utill import *
 from functions.manageDB import *
 
@@ -142,8 +142,15 @@ class game(commands.Cog):
 
             if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
                 argus = ctx.content[3:].strip()
-                weapon, character = argus.split(" ")
-
+                weapon_character = argus.split(" ")
+                if len(weapon_character) != 2:
+                    await ctx.reply("!ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                    return
+                weapon = weapon_character[0]
+                character = weapon_character[1]
+                if weapon not in char_weapons[character]:
+                    await ctx.reply(f"{character}는 {weapon}을 사용하지 않습니다.")
+                    return
                 try:
                     file, embed = await self.get_character_statistics(weapon, character)
                     await ctx.reply(file=file, embed=embed)
