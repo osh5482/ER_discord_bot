@@ -30,18 +30,6 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name="실수로 눈젖빵 제작"))
 
 
-@bot.event
-async def on_guild_join(guild):
-    """새로운 서버 들어갔을때 로그띄워주는 함수"""
-    print(f"{bot.user} was invited at {guild.name}")
-
-
-@bot.event
-async def on_guild_remove(guild):
-    """서버에서 봇이 나갈 때 실행되는 코드"""
-    print(f"{bot.user} was kicked out at {guild.name}")
-
-
 @bot.command(hidden=True)
 @commands.is_owner()
 async def load(ctx: commands.Context, *, module: str):
@@ -55,6 +43,7 @@ async def load(ctx: commands.Context, *, module: str):
 @bot.command(hidden=True)
 @commands.is_owner()
 async def unload(ctx: commands.Context, *, module: str):
+    """특정 cog 언로드"""
     try:
         await bot.unload_extension(f"cogs.{module}")
         print(f"[{current_time()}] {module} was sucessfully unloaded")
@@ -65,6 +54,7 @@ async def unload(ctx: commands.Context, *, module: str):
 @bot.command(hidden=True)
 @commands.is_owner()
 async def reload(ctx: commands.Context, *, module: str):
+    """특정 cog 리로드"""
     try:
         await bot.reload_extension(f"cogs.{module}")
         print(f"[{current_time()}] {module} was sucessfully reloaded")
@@ -75,6 +65,7 @@ async def reload(ctx: commands.Context, *, module: str):
 @bot.command(hidden=True)
 @commands.is_owner()
 async def all_reload(ctx: commands.Context):
+    """모든 cog 리로드"""
     for filename in os.listdir("cogs"):
         try:
             if filename.endswith(".py"):
@@ -96,12 +87,20 @@ async def main():
     await bot.start(TOKEN)
 
 
-@bot.command(hidden=True)
-@commands.is_owner()
-async def stop(ctx):
-    await ctx.send("봇을 종료합니다.")
-    print(f"[{current_time()}]Bot was stopped")
-    await bot.close()
+@bot.event
+async def on_guild_join(guild):
+    """새로운 서버에 초대받았을때 메세지 출력"""
+    new_server = guild.sysyem_channel
+    server_info = (guild.name, guild.id)
+    await new_server.send("아 ㅁㅊ 눈젖빵 만들었어")
+    print(f"Bot was invites at {server_info}")
+
+
+@bot.event
+async def on_guild_remove(guild):
+    """서버에서 봇 내보내질때 로그 남김"""
+    server_info = (guild.name, guild.id)
+    print(f"Bot was kicked out at {server_info}")
 
 
 @bot.command(hidden=True, name="서버")
