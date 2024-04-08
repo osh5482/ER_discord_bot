@@ -166,8 +166,13 @@ class game(commands.Cog):
                                 character = word[len(name) :]
                                 finish = True
                                 break
+
                         if finish:
                             break
+
+                    if finish is False:
+                        await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")
+                        return
 
                 if len(weapon_character) > 2:
                     await ctx.reply("?ㅌㄱ<무기> <캐릭터>로 입력해주세요.")

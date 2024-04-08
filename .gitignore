@@ -222,5 +222,5 @@ $RECYCLE.BIN/
 tempCodeRunnerFile.py
 
 # DB file
-*.db
+data.db
 # End of https://www.toptal.com/developers/gitignore/api/windows,python,visualstudiocode
