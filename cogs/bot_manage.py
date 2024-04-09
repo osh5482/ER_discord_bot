@@ -27,12 +27,15 @@ class bot_manage(commands.Cog):
     @commands.command(hidden=True, name="서버")
     @commands.is_owner()
     async def servers(self, ctx):
+        """봇이 있는 서버 리스트 출력"""
         servers = self.bot.guilds
-        server_list = [f"{server.name} (ID: {server.id})" for server in servers]
+        server_list = [
+            f"server: {server}, members: {server.member_count}" for server in servers
+        ]
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
-        # await ctx.channel.send(servers_str)
+        await ctx.channel.send(servers_str)
 
     # @commands.command(aliases=["ㅁㅇ", "문의"])
     # async def QnA(self, ctx):
@@ -51,7 +54,7 @@ class bot_manage(commands.Cog):
     @commands.cooldown(1, 1800, commands.BucketType.user)
     @commands.command(aliases=["ㅁㅇ", "문의"])
     async def send_question(self, ctx, question):
-
+        """나한테 문의사항 보내주는 함수"""
         owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
         await owner.send(
             f"[{current_time()}]\n{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {question}"
