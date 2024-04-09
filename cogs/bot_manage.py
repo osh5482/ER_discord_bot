@@ -1,7 +1,7 @@
 import asyncio
 import discord
 from discord.ext import commands
-from functions.utill import current_time
+from functions.utill import current_time, print_user_server
 
 
 class bot_manage(commands.Cog):
@@ -44,6 +44,7 @@ class bot_manage(commands.Cog):
         questioner = ctx.author.name
         server = ctx.guild.name
         print(f"[{current_time()}] QnA was used by {questioner} in {server}")
+        print_user_server(ctx)
 
 
 async def setup(bot):
