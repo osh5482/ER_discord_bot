@@ -39,7 +39,7 @@ class bot_manage(commands.Cog):
         user_id = self.bot.owner_id  # 봇 주인의 ID를 가져옵니다.
         user = await self.bot.fetch_user(user_id)  # 사용자 정보를 가져옵니다.
         owner_name = user.name  # 사용자의 이름을 가져옵니다.
-        await ctx.reply(f"ㄴ문의는 {owner_name}에게 DM해주세요.")
+        await ctx.reply(f"문의는 {owner_name}에게 DM해주세요.")
 
         questioner = ctx.author.name
         server = ctx.guild.name
