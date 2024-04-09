@@ -56,8 +56,8 @@ class game(commands.Cog):
         else:
             icon = "mang_game"
 
-        in_game_user = format(str(in_game_user), ",")
-        most_24h = format(str(most_24h), ",")
+        in_game_user = format(in_game_user, ",")
+        most_24h = format(most_24h, ",")
 
         embed = discord.Embed(
             title="현재 동시 접속자",
