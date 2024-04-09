@@ -34,19 +34,49 @@ class bot_manage(commands.Cog):
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         # await ctx.channel.send(servers_str)
 
+    # @commands.command(aliases=["ㅁㅇ", "문의"])
+    # async def QnA(self, ctx):
+    #     user_id = self.bot.owner_id  # 봇 주인의 ID를 가져옵니다.
+    #     user = await self.bot.fetch_user(user_id)  # 사용자 정보를 가져옵니다.
+    #     owner_name = user.name  # 사용자의 이름을 가져옵니다.
+    #     await ctx.reply(
+    #         f"문의는 {owner_name}에게 DM, 혹은 osh5482@naver.com로 메일을 보내주세요."
+    #     )
+
+    #     questioner = ctx.author.name
+    #     server = ctx.guild.name
+    #     print(f"[{current_time()}] QnA was used by {questioner} in {server}")
+    #     print_user_server(ctx)
+
+    @commands.cooldown(1, 1800, commands.BucketType.user)
     @commands.command(aliases=["ㅁㅇ", "문의"])
-    async def QnA(self, ctx):
-        user_id = self.bot.owner_id  # 봇 주인의 ID를 가져옵니다.
-        user = await self.bot.fetch_user(user_id)  # 사용자 정보를 가져옵니다.
-        owner_name = user.name  # 사용자의 이름을 가져옵니다.
-        await ctx.reply(
-            f"문의는 {owner_name}에게 DM, 혹은 osh5482@naver.com로 메일을 보내주세요."
+    async def send_question(self, ctx):
+        sent_message = await ctx.reply(
+            "문의사항을 이 메세지에 **답장**으로 1분안에 입력해주세요."
         )
 
-        questioner = ctx.author.name
-        server = ctx.guild.name
-        print(f"[{current_time()}] QnA was used by {questioner} in {server}")
-        print_user_server(ctx)
+        def check(message):
+            return (
+                message.author == ctx.author
+                and message.reference
+                and message.reference.message_id == sent_message.id
+            )
+
+        try:
+            reply_message = await self.bot.wait_for(
+                "message", check=check, timeout=60
+            )  # 사용자의 답장을 기다립니다. 60초 동안 대기합니다.
+        except asyncio.TimeoutError:
+            await sent_message.reply("1분이 초과되었습니다.")
+            return
+
+        # 사용자의 답장을 나에게 DM으로 보냅니다.
+        owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
+        await owner.send(
+            f"{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {reply_message.content}"
+        )
+        await reply_message.reply("문의사항이 전송되었습니다.")
+        print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
 
 
 async def setup(bot):

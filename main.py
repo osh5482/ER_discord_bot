@@ -27,6 +27,7 @@ async def load_extensions():
 async def on_ready():
     """봇 시작하면 로그인 로그 print하고 상태 띄워주는 함수"""
     print(f"[{current_time()}] Logged in as {bot.user}")
+    bot.owner_id = 393987987005767690
     await bot.change_presence(activity=discord.Game(name="실수로 눈젖빵 제작"))
 
 
@@ -90,7 +91,7 @@ async def command_list(ctx):
     ㅈㅈ<닉네임> : 유저의 랭겜 전적을 가져옵니다. 띄어쓰기로 멀티서치가 가능합니다.
     ㅌㄱ<무기><캐릭터> : 캐릭터의 통계를 가져옵니다.
     ===========================
-    ㅁㅇ : 문의사항은 이쪽으로```"""
+    ㅁㅇ : 문의사항을 보낼수있습니다. (쿨타임 30분)```"""
 
     await ctx.channel.send(msg)
     print(f"[{current_time()}] Success command_list")
