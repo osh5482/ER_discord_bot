@@ -144,6 +144,7 @@ class game(commands.Cog):
                 print(f"[{current_time()}] Success get user info {name_list}")
                 print_user_server(ctx)
                 await ctx.reply(files=files, embeds=embeds)
+                await logging_function(self.bot, ctx, function_name="get_user_info")
                 return
 
             if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
@@ -196,6 +197,9 @@ class game(commands.Cog):
                         f"[{current_time()}] Success get character statistics {weapon} {character}"
                     )
                     print_user_server(ctx)
+                    await logging_function(
+                        self.bot, ctx, function_name="get_character_statistics"
+                    )
                     return
 
                 except:
@@ -255,6 +259,7 @@ class game(commands.Cog):
         return files, embeds
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
+    @commands.command()
     async def get_character_statistics(self, weapon, character):
         """캐릭터 통계 가져와서 임베드로 보여주는 함수"""
         weapon_E = weapon_english[f"{weapon}"]

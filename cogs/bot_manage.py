@@ -7,6 +7,7 @@ from functions.utill import current_time, print_user_server
 class bot_manage(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.log_channel_id = 1227163092719374366
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -61,6 +62,14 @@ class bot_manage(commands.Cog):
         )
         await ctx.reply("문의사항이 전송되었습니다. 쿨타임은 30분입니다.")
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
+
+    @commands.Cog.listener()
+    async def on_command_completion(self, ctx):
+        """로그 채널에 로그 남기는 함수"""
+        log_channel = self.bot.get_channel(self.log_channel_id)
+        await log_channel.send(
+            f"*[{current_time()}]* `{ctx.command}` was processed by `{ctx.author}` in `{ctx.guild}`"
+        )
 
 
 async def setup(bot):

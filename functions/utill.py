@@ -64,3 +64,11 @@ def print_user_server(ctx):
     user_name = ctx.author.name
     server_name = ctx.guild.name
     print(f"└Processed by {user_name} in {server_name}")
+
+
+async def logging_function(bot, ctx, function_name):
+    """명령어 아니어도 로그 남기는 함수"""
+    log_channel = bot.get_channel(1227163092719374366)
+    await log_channel.send(
+        f"[{current_time()}] `{function_name}` was processed by `{ctx.author}` in `{ctx.guild}`"
+    )
