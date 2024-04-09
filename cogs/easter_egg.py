@@ -86,6 +86,7 @@ class easter_egg(commands.Cog):
             else:
                 command_name = ctx.command
             print(f"[{current_time()}] {command_name} was requested on cooldown")
+            print_user_server(ctx)
             return
 
 

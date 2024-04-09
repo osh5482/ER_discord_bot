@@ -52,7 +52,7 @@ class bot_manage(commands.Cog):
     @commands.command(aliases=["ㅁㅇ", "문의"])
     async def send_question(self, ctx):
         sent_message = await ctx.reply(
-            "문의사항을 이 메세지에 **답장**으로 1분안에 입력해주세요."
+            "문의사항을 이 메세지에 **답장**으로 1분안에 입력해주세요.\n쿨타임은 **30분**입니다."
         )
 
         def check(message):
