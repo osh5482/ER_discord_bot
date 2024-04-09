@@ -24,7 +24,6 @@ class easter_egg(commands.Cog):
                 return
             except commands.CommandOnCooldown as e:
                 await self.on_command_error(message, e)
-                print_user_server(message)
                 return
 
         if "젠장 마커스" in message.content:
@@ -34,7 +33,6 @@ class easter_egg(commands.Cog):
                 return
             except commands.CommandOnCooldown as e:
                 await self.on_command_error(message, e)
-                print_user_server(message)
                 return
 
     async def damn_it(self, mesaage):
