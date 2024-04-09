@@ -240,15 +240,28 @@ class game(commands.Cog):
                 rank = format(rank, ",")
                 tier = rank_data["tier"]
                 mmr = rank_data["mmr"]
+                win_rate = (rank_data["totalWins"] / rank_data["totalGames"]) * 100
+                win_rate = round(win_rate, 2)
+                average_TK = round(
+                    rank_data["totalTeamKills"] / rank_data["totalGames"], 2
+                )
+                average_rank = rank_data["averageRank"]
                 most_character_code = rank_data["characterStats"][0]["characterCode"]
                 char_name, code = ER.find_characte_name(most_character_code)
 
                 embed = discord.Embed(
                     title=f"{name}",
-                    description=f"랭킹 : {rank} 위\n티어 : {tier}\nMMR : {mmr}",
+                    # description=f"랭킹 : {rank} 위\n티어 : {tier}\nMMR : {mmr}",
                     color=0x00FF00,
                     url=f"https://dak.gg/er/players/{name}",
                 )
+                embed.add_field(name="랭킹", value=f"{rank}위", inline=True)
+                embed.add_field(name="티어", value=f"{tier}", inline=True)
+                embed.add_field(name="mmr", value=f"{mmr}", inline=True)
+                embed.add_field(name="승률", value=f"{win_rate}%", inline=True)
+                embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
+                embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
+
             file_path = f"./image/char_profile/{code}_{char_name}.png"
             embed.set_thumbnail(url=f"attachment://{char_name}.png")
             file = discord.File(file_path, filename=f"{char_name}.png")

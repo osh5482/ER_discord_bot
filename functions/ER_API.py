@@ -444,10 +444,11 @@ async def get_user_recent_games_90d(user_num):
 
 async def main():
     start_time = time.perf_counter()
-    id, _ = await get_user_num("아니tlqk내솔로가")
-    a = await get_user_recent_games_90d(id)
-    # print(json.dumps(a, ensure_ascii=False, indent=2))
-    print(len(a))
+
+    tuples = await get_user_num("아니tlqk내솔로가")
+    a = await get_user_season_data(tuples)
+    print(json.dumps(a, ensure_ascii=False, indent=2))
+
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
     rounded_time = round(total_time, 3)
