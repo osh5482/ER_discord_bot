@@ -1,6 +1,7 @@
 from discord.ext import tasks, commands
 from functions.manageDB import *
-from functions.utill import insert_comma
+
+# from functions.utill import insert_comma
 from functions.ER_API import get_current_player_api
 from functions.utill import current_time
 
@@ -24,7 +25,7 @@ class save_data(commands.Cog):
         insert_data(c, current_unix_time, now, current_player)
         delete_old_data(c)
         sort_by_time(c)
-        current_player = insert_comma(current_player)
+        current_player = format(current_player, ",")
         # print(f"24시간 동안 최고 동접: {most_play}")
         print(f"[{now}] Save player {current_player}")
 

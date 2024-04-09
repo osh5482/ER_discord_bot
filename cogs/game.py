@@ -56,8 +56,8 @@ class game(commands.Cog):
         else:
             icon = "mang_game"
 
-        in_game_user = insert_comma(str(in_game_user))
-        most_24h = insert_comma(str(most_24h))
+        in_game_user = format(str(in_game_user), ",")
+        most_24h = format(str(most_24h), ",")
 
         embed = discord.Embed(
             title="현재 동시 접속자",
@@ -237,7 +237,7 @@ class game(commands.Cog):
                 # await ctx.send(f"> '{name}' 의 현재시즌 정보가 없습니다.")
             else:
                 rank = rank_data["rank"]
-                rank = insert_comma(rank)
+                rank = format(rank, ",")
                 tier = rank_data["tier"]
                 mmr = rank_data["mmr"]
                 most_character_code = rank_data["characterStats"][0]["characterCode"]
