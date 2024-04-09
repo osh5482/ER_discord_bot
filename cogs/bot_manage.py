@@ -50,32 +50,13 @@ class bot_manage(commands.Cog):
 
     @commands.cooldown(1, 1800, commands.BucketType.user)
     @commands.command(aliases=["ㅁㅇ", "문의"])
-    async def send_question(self, ctx):
-        sent_message = await ctx.reply(
-            "문의사항을 이 메세지에 **답장**으로 1분안에 입력해주세요.\n쿨타임은 **30분**입니다."
-        )
+    async def send_question(self, ctx, question):
 
-        def check(message):
-            return (
-                message.author == ctx.author
-                and message.reference
-                and message.reference.message_id == sent_message.id
-            )
-
-        try:
-            reply_message = await self.bot.wait_for(
-                "message", check=check, timeout=60
-            )  # 사용자의 답장을 기다립니다. 60초 동안 대기합니다.
-        except asyncio.TimeoutError:
-            await sent_message.reply("1분이 초과되었습니다.")
-            return
-
-        # 사용자의 답장을 나에게 DM으로 보냅니다.
         owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
         await owner.send(
-            f"{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {reply_message.content}"
+            f"[{current_time()}]\n{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {question}"
         )
-        await reply_message.reply("문의사항이 전송되었습니다.")
+        await ctx.reply("문의사항이 전송되었습니다.")
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
 
 
