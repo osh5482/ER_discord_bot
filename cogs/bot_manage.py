@@ -56,7 +56,7 @@ class bot_manage(commands.Cog):
         await owner.send(
             f"[{current_time()}]\n{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {question}"
         )
-        await ctx.reply("문의사항이 전송되었습니다.")
+        await ctx.reply("문의사항이 전송되었습니다. 쿨타임은 30분입니다.")
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
 
 
