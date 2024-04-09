@@ -28,7 +28,8 @@ async def on_ready():
     """봇 시작하면 로그인 로그 print하고 상태 띄워주는 함수"""
     print(f"[{current_time()}] Logged in as {bot.user}")
     bot.owner_id = 393987987005767690
-    await bot.change_presence(activity=discord.Game(name="실수로 눈젖빵 제작"))
+    count = len(bot.guilds)
+    await bot.change_presence(activity=discord.Game(name=f"눈젖빵 {count}개째 제작"))
 
 
 @bot.command(hidden=True)
