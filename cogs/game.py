@@ -102,7 +102,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㄷㅁ", "데미", "데미갓", "뎀갓"])
+    @commands.command(aliases=["ㄷㅁ", "ㄷㅁㄱ", "데미", "데미갓", "뎀갓"])
     async def check_demigod_rating(self, ctx):
         """데미갓 컷 보는 함수"""
         if ctx.author == self.bot.user:
@@ -113,7 +113,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㅇㅌ", "이터", "이터니티"])
+    @commands.command(aliases=["ㅇㅌ", "ㅇㅌㄴㅌ", "이터", "이터니티"])
     async def check_iternity_rating(self, ctx):
         """이터 컷 보는 함수"""
         if ctx.author == self.bot.user:
