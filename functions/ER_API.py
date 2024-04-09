@@ -340,7 +340,7 @@ async def get_demigod_rating():
         response_json = await add_header(url)
 
         top_ranks = response_json["topRanks"]
-        last_demigod = top_ranks[-301]  # == top_ranks[699]
+        last_demigod = top_ranks[699]
         demigod_cut = last_demigod["mmr"]
         return demigod_cut
 
