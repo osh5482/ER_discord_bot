@@ -34,6 +34,17 @@ class bot_manage(commands.Cog):
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         # await ctx.channel.send(servers_str)
 
+    @commands.command(aliases=["ㅁㅇ", "문의"])
+    async def QnA(self, ctx):
+        user_id = self.bot.owner_id  # 봇 주인의 ID를 가져옵니다.
+        user = await self.bot.fetch_user(user_id)  # 사용자 정보를 가져옵니다.
+        owner_name = user.name  # 사용자의 이름을 가져옵니다.
+        await ctx.reply(f"ㄴ문의는 {owner_name}에게 DM해주세요.")
+
+        questioner = ctx.author.name
+        server = ctx.guild.name
+        print(f"[{current_time()}] QnA was used by {questioner} in {server}")
+
 
 async def setup(bot):
     await bot.add_cog(bot_manage(bot))
