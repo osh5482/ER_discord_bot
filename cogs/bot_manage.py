@@ -16,8 +16,8 @@ class bot_manage(commands.Cog):
         server_info = (guild.name, guild.id)
         if new_server:
             await asyncio.sleep(1)
-            await new_server.send("아 또 눈젖빵 만들었어")
-        print(f"[{current_time()}] Bot was invited at {server_info}")
+            await new_server.send(f"눈젖빵을 {len(self.bot.guilds)}개나 만들어 버려요~")
+            print(f"[{current_time()}] Bot was invited at {server_info}")
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
@@ -62,6 +62,7 @@ class bot_manage(commands.Cog):
         )
         await ctx.reply("문의사항이 전송되었습니다. 쿨타임은 30분입니다.")
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
+        print_user_server(ctx)
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):

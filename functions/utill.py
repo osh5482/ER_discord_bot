@@ -12,24 +12,6 @@ def current_time():
     return formatted_time
 
 
-def insert_comma(data, unit=3):
-    """세 자릿수마다 콤마 넣어주는 함수
-    반환값 : str(숫자)"""
-    data = str(data)
-    result = []
-    start = len(data) % unit
-
-    # 처음 남은 부분을 result에 추가
-    if start:
-        result.append(data[:start])
-
-    # unit 단위로 콤마 추가
-    for i in range(start, len(data), unit):
-        result.append(data[i : i + unit])
-
-    return ",".join(result)
-
-
 cooldowns = {}
 
 
