@@ -109,7 +109,7 @@ class game(commands.Cog):
             return
         rating = await ER.get_demigod_rating()
         await ctx.channel.send(f"> 데미갓 컷 : **{rating}** 점")
-        print(f"[{current_time()}] Success checkDemigodRating {rating}")
+        print(f"[{current_time()}] Success check_demigod_rating {rating}")
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
@@ -120,7 +120,7 @@ class game(commands.Cog):
             return
         rating = await ER.get_iternity_rating()
         await ctx.channel.send(f"> 이터니티 컷 : **{rating}** 점")
-        print(f"[{current_time()}] Success checkDIternityRating {rating}")
+        print(f"[{current_time()}] Success check_iternity_rating {rating}")
         print_user_server(ctx)
 
     @commands.Cog.listener()
