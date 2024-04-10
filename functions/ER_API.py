@@ -5,9 +5,9 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 
-from functions.dict_lib import *
+# from functions.dict_lib import *
 
-# from dict_lib import *
+from dict_lib import *
 
 import asyncio
 import json
@@ -407,48 +407,68 @@ async def get_patchnote():
 async def get_routh(id):
     url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
     response_json = await add_header(url)
+    if response_json["code"] != 200:
+        return 404
+    response_json = response_json["result"]["recommendWeaponRoute"]
     print(json.dumps(response_json, ensure_ascii=False, indent=2))
     return response_json
 
 
-async def get_meta_data(meta):
+async def get_meta_data(meta="hash"):
+    """메타 데이터 수집"""
     url = f"https://open-api.bser.io/v1/data/{meta}"
     response_json = await add_header(url)
     return response_json
 
 
-async def get_user_recent_games_10(user_num, next=None):
-    """유저의 최근 10게임 반환
-    반환값 : dict"""
-    url = f"https://open-api.bser.io/v1/user/games/{user_num}"
-    if next is not None:
-        url += f"?next={next}"
-    response_json = await add_header(url)
+async def create_route_dict(route_json: dict):
+    id = route_json["id"]
 
-    return response_json
+    character_id = route_json["characterCode"]
+    character_name = next(
+        (name for name, id in char_code.items() if id == character_id), None
+    )
+    character_name = char_korean[character_name]
+
+    weapon = route_json["weaponType"]
+    weapon = weapon_code[weapon]
+    weapon = weapon_korean[weapon]
+
+    items = route_json["weaponCodes"]
+    items = items[1:-1]
+    items = items.split(",")
+    items = [int(code) for code in items]
+    items = [items_dict[code] for code in items]
+
+    paths = route_json["paths"]
+    paths = paths[1:-1]
+    paths = paths.split(",")
+    paths = [int(code) for code in paths]
+    # paths = [area[code] for code in paths]
+    print(paths)
+    return
 
 
-async def get_user_recent_games_90d(user_num):
-    games = []
-    next = None
+async def save_items(item_kind):
+    """아이템 코드 저장"""
+    items = await get_meta_data(item_kind)
+    items = items["data"]
+    id_to_name = {item["code"]: item["name"] for item in items}
 
-    while True:
-        result = await get_user_recent_games_10(user_num, next=next)
-        games.append(result)
-        if "next" not in result.keys():
-            break
-        next = result["next"]
+    # id_to_name 딕셔너리를 JSON 형식의 문자열로 변환
+    json_data = json.dumps(id_to_name, ensure_ascii=False, indent=2)
 
-    return games
+    with open(f"./items_json/{item_kind}.json", "w", encoding="utf-8") as f:
+        f.write(json_data)
+    print(f"{item_kind} 저장 완료")
+    return
 
 
 async def main():
     start_time = time.perf_counter()
-
-    tuples = await get_user_num("아니tlqk내솔로가")
-    a = await get_user_season_data(tuples)
-    print(json.dumps(a, ensure_ascii=False, indent=2))
-
+    a = await get_routh(1111)
+    b = await create_route_dict(a)
+    # print(json.dumps(a, ensure_ascii=False, indent=2))
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
     rounded_time = round(total_time, 3)

@@ -1,3 +1,52 @@
+import json
+
+with open("./items_json/ItemArmor.json", "r", encoding="utf-8") as f:
+    item_armor = json.load(f)
+    item_armor = {int(key): value for key, value in item_armor.items()}
+
+
+with open("./items_json/ItemWeapon.json", "r", encoding="utf-8") as f:
+    item_weapon = json.load(f)
+    item_weapon = {int(key): value for key, value in item_weapon.items()}
+
+items_dict = item_weapon | item_armor
+
+
+# with open("./items_json/Area.json", "r", encoding="utf-8") as f:
+#     area = json.load(f)
+#     area = {int(key): value for key, value in area.items()}
+
+# area = {
+#     1: "항구",
+#     2: "연못",
+#     3: "모래사장",
+#     4: "고급주택가",
+#     5: "골목길",
+#     6: "호텔",
+#     7: "시내",
+#     8: "병원",
+#     9: "절",
+#     10: "양궁장",
+#     11: "묘지",
+#     12: "숲",
+#     13: "공장",
+#     14: "성당",
+#     15: "학교",
+#     16: "연구소",
+#     17: "탈출M",
+#     18: "탈출A",
+#     19: "탈출B",
+#     20: "브리핑룸",
+#     101: "코발트1",
+#     102: "코발트2",
+#     103: "코발트3",
+#     104: "코발트4",
+#     105: "코발트5",
+#     106: "코발트6",
+#     107: "코발트7",
+# }
+# print(area)
+
 tiers = {
     "다이아몬드": [(4800, 5150), (5150, 5500), (5500, 5850), (5850, 6200)],
     "플래티넘": [(3600, 3900), (3900, 4200), (4200, 4500), (4500, 4800)],
@@ -307,7 +356,6 @@ char_weapons = {
     "카티야": ["저격총"],
 }
 
-
 weapon_korean = {
     "Glove": "글러브",
     "Tonfa": "톤파",
@@ -358,4 +406,32 @@ weapon_english = {
     "카메라": "Camera",
     "아르카나": "Arcana",
     "VF의수": "VFArm",
+}
+
+weapon_code = {
+    0: "None",
+    1: "Glove",
+    2: "Tonfa",
+    3: "Bat",
+    4: "Whip",
+    5: "HighAngleFire",
+    6: "DirectFire",
+    7: "Bow",
+    8: "CrossBow",
+    9: "Pistol",
+    10: "AssaultRifle",
+    11: "SniperRifle",
+    13: "Hammer",
+    14: "Axe",
+    15: "OneHandSword",
+    16: "TwoHandSword",
+    17: "Polearm",
+    18: "DualSword",
+    19: "Spear",
+    20: "Nunchaku",
+    21: "Rapier",
+    22: "Guitar",
+    23: "Camera",
+    24: "Arcana",
+    25: "VFArm",
 }
