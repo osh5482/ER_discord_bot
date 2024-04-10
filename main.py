@@ -29,8 +29,9 @@ async def on_ready():
     print(f"[{current_time()}] Logged in as {bot.user}")
     bot.owner_id = 393987987005767690
     bot.log_channel = bot.get_channel(1227163092719374366)
-    count = len(bot.guilds)
-    await bot.change_presence(activity=discord.Game(name=f"눈젖빵 {count}개째 제작"))
+    await bot.change_presence(
+        activity=discord.Game(name=f"눈젖빵 {len(bot.guilds)}개째 제작")
+    )
 
 
 @bot.command(hidden=True)
