@@ -44,7 +44,7 @@ class bot_manage(commands.Cog):
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         await ctx.channel.send(
-            f"``` {servers_str}\n 총 서버 갯수 : {len(server_list)}```"
+            f"```{servers_str}\n 총 서버 갯수 : {len(server_list)}```"
         )
 
     # @commands.command(aliases=["ㅁㅇ", "문의"])
