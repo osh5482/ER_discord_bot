@@ -32,7 +32,7 @@ class bot_manage(commands.Cog):
             activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
         )
 
-    @commands.command(hidden=True, name="서버")
+    @commands.command(hidden=True, aliases=["ㅅㅂ", "서버"])
     @commands.is_owner()
     async def servers(self, ctx):
         """봇이 있는 서버 리스트 출력"""
@@ -43,7 +43,7 @@ class bot_manage(commands.Cog):
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
-        await ctx.channel.send(servers_str)
+        await ctx.channel.send(f">>> {servers_str}\n 총 서버 갯수 : {len(server_list)}")
 
     # @commands.command(aliases=["ㅁㅇ", "문의"])
     # async def QnA(self, ctx):
