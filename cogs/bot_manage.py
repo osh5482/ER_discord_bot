@@ -17,10 +17,10 @@ class bot_manage(commands.Cog):
         if new_server:
             await asyncio.sleep(1)
             await new_server.send(f"눈젖빵을 {len(self.bot.guilds)}개나 만들어 버려요~")
-            print(f"[{current_time()}] Bot was invited at {server_info}")
-            await self.bot.change_presence(
-                activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
-            )
+        print(f"[{current_time()}] Bot was invited at {server_info}")
+        await self.bot.change_presence(
+            activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
+        )
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
