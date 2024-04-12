@@ -43,7 +43,9 @@ class bot_manage(commands.Cog):
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
-        await ctx.channel.send(f">>> {servers_str}\n 총 서버 갯수 : {len(server_list)}")
+        await ctx.channel.send(
+            f"``` {servers_str}\n 총 서버 갯수 : {len(server_list)}```"
+        )
 
     # @commands.command(aliases=["ㅁㅇ", "문의"])
     # async def QnA(self, ctx):
