@@ -47,31 +47,32 @@ class bot_manage(commands.Cog):
             f"```{servers_str}\n 총 서버 갯수 : {len(server_list)}```"
         )
 
-    # @commands.command(aliases=["ㅁㅇ", "문의"])
-    # async def QnA(self, ctx):
-    #     user_id = self.bot.owner_id  # 봇 주인의 ID를 가져옵니다.
-    #     user = await self.bot.fetch_user(user_id)  # 사용자 정보를 가져옵니다.
-    #     owner_name = user.name  # 사용자의 이름을 가져옵니다.
-    #     await ctx.reply(
-    #         f"문의는 {owner_name}에게 DM, 혹은 osh5482@naver.com로 메일을 보내주세요."
-    #     )
-
-    #     questioner = ctx.author.name
-    #     server = ctx.guild.name
-    #     print(f"[{current_time()}] QnA was used by {questioner} in {server}")
-    #     print_user_server(ctx)
-
     @commands.cooldown(1, 1800, commands.BucketType.user)
     @commands.command(aliases=["ㅁㅇ", "문의"])
-    async def send_question(self, ctx, *, question):
+    async def send_question(self, ctx: commands.Context, *, question):
         """나한테 문의사항 보내주는 함수"""
         owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
         await owner.send(
-            f"[{current_time()}]\n{ctx.guild.name}에서 {ctx.author}님이 문의를 등록했습니다\n> {question}"
+            f"*[{current_time()}] 문의사항 등록*\n보낸 이: `{ctx.guild.name}`의 `{ctx.author}`님(`{ctx.author.id}`)\n>>> {question}"
         )
-        await ctx.reply("문의사항이 전송되었습니다. 쿨타임은 30분입니다.")
+        await ctx.reply(
+            "문의사항이 전송되었습니다. 쿨타임은 30분입니다.\n답변을 받기 위해 개인 DM을 허용해주세요."
+        )
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
         print_user_server(ctx)
+
+    @commands.command(aliases=["ㄷㅂ", "답변"])
+    @commands.is_owner()
+    async def question_reply(self, ctx, user_id, *, answer):
+        """문의에 대한 답변을 보내는 함수"""
+        try:
+            user = await self.bot.fetch_user(user_id)
+            msg = f"*[{current_time()}]* 문의 답변이 도착했습니다.\n>>> {answer}"
+            await user.send(msg)
+            await ctx.send(f"{user.name}에게 답변을 성공적으로 보냈습니다.")
+        except:
+            await ctx.send(f"{user.name}에게 DM을 보낼 수 없습니다.")
+        return
 
     @commands.Cog.listener()
     async def on_command_completion(self, ctx):
