@@ -54,10 +54,10 @@ class bot_manage(commands.Cog):
         owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
         msg_id = ctx.message.id
         await owner.send(
-            f"*[{current_time()}] 문의사항 등록*\n보낸 이: `{ctx.guild.name}`의 `{ctx.author}`님(`{ctx.author.id}`)\n메세지 id : `{msg_id}`\n>>> {question}"
+            f"*[{current_time()}] 문의사항 등록*\n보낸 이: `{ctx.guild.name}`의 `{ctx.author}`님(`{ctx.author.id}`)\n>>> {question}"
         )
         await ctx.reply(
-            "문의사항이 전송되었습니다. 쿨타임은 30분입니다.\n답변을 받기 위해 문의 메세지를 삭제하지 말아주세요."
+            "문의사항이 전송되었습니다. 쿨타임은 30분입니다.\n답변을 받기 위해 DM을 허용해주세요."
         )
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
         print_user_server(ctx)
@@ -71,8 +71,8 @@ class bot_manage(commands.Cog):
         try:
             await question.reply(answer)
             await ctx.send(f"{question.author}에게 답변을 성공적으로 보냈습니다.")
-        except discord.NotFound:
-            await ctx.send("문의 메세지가 삭제되어 답장을 보내지 못했습니다.")
+        except:
+            await ctx.send("개인DM이 닫혀있는듯...")
         return
 
     @commands.Cog.listener()
