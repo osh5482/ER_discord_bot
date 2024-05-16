@@ -72,7 +72,7 @@ char_code = {
     "Theodore": 62,
     "Lyanh": 63,
     "Vanya": 64,
-    "Debimarlene": 65,
+    "DebiMarlene": 65,
     "Arda": 66,
     "Abigail": 67,
     "Alonso": 68,
