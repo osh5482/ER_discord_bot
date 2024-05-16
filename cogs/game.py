@@ -278,6 +278,7 @@ class game(commands.Cog):
         weapon_E = weapon_english[f"{weapon}"]
         character_E = char_english[f"{character}"]
         s_dict = await gg.make_character_statistics(weapon_E, character_E)
+        print(s_dict)
 
         embed = discord.Embed(
             title=f"{weapon} {character}",
