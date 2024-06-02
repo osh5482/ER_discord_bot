@@ -13,7 +13,7 @@ class game(commands.Cog):
         self.bot = bot
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㅍㅊ", "패치", "ㅍㄴ", "패노", "패치노트"])
+    @commands.command(aliases=["ㅍㅊ", "패치", "ㅍㄴ", "패노", "패치노트", "vs"])
     async def get_recent_major_patchnote(self, ctx):
         """제일 최근 메이저패치 가져오는 함수"""
         if ctx.author == self.bot.user:
@@ -28,7 +28,7 @@ class game(commands.Cog):
         return
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㄷㅈ", "동접"])
+    @commands.command(aliases=["ㄷㅈ", "동접", "ew"])
     async def get_in_game_user(self, ctx):
         """동접 확인 함수"""
         if ctx.author == self.bot.user:
@@ -74,7 +74,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㅅㅈ", "시즌"])
+    @commands.command(aliases=["ㅅㅈ", "시즌", "tw"])
     async def get_season_remaining(self, ctx):
         """남은 시즌 확인 함수"""
         if ctx.author == self.bot.user:
@@ -102,7 +102,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㄷㅁ", "ㄷㅁㄱ", "데미", "데미갓", "뎀갓"])
+    @commands.command(aliases=["ㄷㅁ", "ㄷㅁㄱ", "데미", "데미갓", "뎀갓", "ea"])
     async def check_demigod_rating(self, ctx):
         """데미갓 컷 보는 함수"""
         if ctx.author == self.bot.user:
@@ -113,7 +113,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     # @commands.cooldown(1, 10, commands.BucketType.channel)
-    @commands.command(aliases=["ㅇㅌ", "ㅇㅌㄴㅌ", "이터", "이터니티"])
+    @commands.command(aliases=["ㅇㅌ", "ㅇㅌㄴㅌ", "이터", "이터니티", "dx"])
     async def check_iternity_rating(self, ctx):
         """이터 컷 보는 함수"""
         if ctx.author == self.bot.user:
@@ -132,7 +132,11 @@ class game(commands.Cog):
 
         if ctx.content.startswith("?"):
 
-            if ctx.content.startswith("?ㅈㅈ") or ctx.content.startswith("?전적"):
+            if (
+                ctx.content.startswith("?ㅈㅈ")
+                or ctx.content.startswith("?전적")
+                or ctx.content.startswith("?ww")
+            ):
                 argus = ctx.content[3:].strip()
                 if argus == "":
                     await ctx.reply(
@@ -147,7 +151,11 @@ class game(commands.Cog):
                 await logging_function(self.bot, ctx, function_name="get_user_info")
                 return
 
-            if ctx.content.startswith("?ㅌㄱ") or ctx.content.startswith("?통계"):
+            if (
+                ctx.content.startswith("?ㅌㄱ")
+                or ctx.content.startswith("?통계")
+                or ctx.content.startswith("?xr")
+            ):
                 argus = ctx.content[3:].strip()
 
                 if argus == "":
