@@ -246,7 +246,12 @@ class game(commands.Cog):
             else:
                 rank = rank_data["rank"]
                 rank = format(rank, ",")
-                tier = rank_data["tier"]
+
+                if user_tuple[0] == 640415:
+                    tier = "릴빵단"
+                else:
+                    tier = rank_data["tier"]
+
                 mmr = rank_data["mmr"]
                 win_rate = (rank_data["totalWins"] / rank_data["totalGames"]) * 100
                 win_rate = round(win_rate, 2)
