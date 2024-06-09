@@ -270,7 +270,11 @@ class game(commands.Cog):
                 embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
                 embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
 
-            file_path = f"./image/char_profile/{code}_{char_name}.png"
+            if user_tuple[0] == 640415:
+                file_path = "./image/icon/im_eternity.png"
+            else:
+                file_path = f"./image/char_profile/{code}_{char_name}.png"
+
             embed.set_thumbnail(url=f"attachment://{char_name}.png")
             file = discord.File(file_path, filename=f"{char_name}.png")
             files_and_embeds.append((embed, file))
