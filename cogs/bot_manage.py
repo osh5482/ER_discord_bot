@@ -52,6 +52,13 @@ class bot_manage(commands.Cog):
     @commands.command(aliases=["ㅁㅇ", "문의"])
     async def send_question(self, ctx: commands.Context, *, question):
         """나한테 문의사항 보내주는 함수"""
+
+        # 특정 서버에서 명령어 실행을 차단
+        restricted_server_id = 1001178691734347867
+        if ctx.guild.id == restricted_server_id:
+            await ctx.reply("산와머니는 서비스 종료다.")
+            return
+
         owner = await self.bot.fetch_user(self.bot.owner_id)  # 393987987005767690
         msg_id = ctx.message.id
         await owner.send(
