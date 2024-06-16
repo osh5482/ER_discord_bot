@@ -38,9 +38,7 @@ class bot_manage(commands.Cog):
         """봇이 있는 서버 리스트 출력"""
         servers = self.bot.guilds
         total_members = sum(server.member_count for server in servers)
-        server_list = [
-            f"server: {server}, members: {server.member_count}" for server in servers
-        ]
+        server_list = [f"{server} / {server.member_count}" for server in servers]
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
