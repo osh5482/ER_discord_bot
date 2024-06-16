@@ -17,7 +17,7 @@ char_code = {
     "Hyunwoo": 7,
     "Hart": 8,
     "Isol": 9,
-    "Lidailin": 10,
+    "LiDailin": 10,
     "Yuki": 11,
     "Hyejin": 12,
     "Xiukai": 13,
