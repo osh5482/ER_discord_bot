@@ -81,6 +81,7 @@ char_code = {
     "Kenneth": 71,
     "Katja": 72,
     "Charlotte": 73,
+    "Darko": 74,
 }
 
 char_korean = {
@@ -157,6 +158,7 @@ char_korean = {
     "Kenneth": "케네스",
     "Katja": "카티야",
     "Charlotte": "샬럿",
+    "Darko": "다르코",
 }
 
 char_english = {
@@ -233,6 +235,7 @@ char_english = {
     "케네스": "Kenneth",
     "카티야": "Katja",
     "샬럿": "Charlotte",
+    "다르코": "Darko",
 }
 
 char_weapons = {
@@ -309,6 +312,7 @@ char_weapons = {
     "케네스": ["도끼"],
     "카티야": ["저격총"],
     "샬럿": ["아르카나"],
+    "다르코": ["방망이"],
 }
 
 

@@ -47,14 +47,17 @@ class game(commands.Cog):
 
         most_24h = await load_24h()
 
-        if in_game_user >= 12000:
+        if in_game_user >= 20000:
             icon = "god_game"
 
-        elif in_game_user >= 6000:
+        elif in_game_user >= 10000:
             icon = "plz_play_game"
 
-        else:
+        elif in_game_user >= 4000:
             icon = "mang_game"
+
+        else:
+            icon = "chobisang"
 
         in_game_user = format(in_game_user, ",")
         most_24h = format(most_24h, ",")
