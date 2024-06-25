@@ -127,7 +127,7 @@ class game(commands.Cog):
         print_user_server(ctx)
 
     @commands.Cog.listener()
-    async def on_message(self, ctx):  #
+    async def on_message(self, ctx):
         """특정 명령어 인식하는 함수"""
         # 봇이 보낸 메시지 무시
         if ctx.author == self.bot.user:
@@ -249,13 +249,9 @@ class game(commands.Cog):
             else:
                 rank = rank_data["rank"]
                 rank = format(rank, ",")
-
-                if user_tuple[0] == 640415:
-                    tier = "릴빵단"
-                else:
-                    tier = rank_data["tier"]
-
+                tier = rank_data["tier"]
                 mmr = rank_data["mmr"]
+
                 win_rate = (rank_data["totalWins"] / rank_data["totalGames"]) * 100
                 win_rate = round(win_rate, 2)
                 average_TK = round(
@@ -279,7 +275,7 @@ class game(commands.Cog):
                 embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
 
             if user_tuple[0] == 640415:
-                file_path = "./image/icon/im_eternity.png"
+                file_path = "./image/icon/rakkun.jpg"
             else:
                 file_path = f"./image/char_profile/{code}_{char_name}.png"
 
