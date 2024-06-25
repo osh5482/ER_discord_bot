@@ -5,7 +5,7 @@ from functions.utill import current_time, print_user_server
 
 
 class bot_manage(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.log_channel_id = 1227163092719374366
 
@@ -64,7 +64,7 @@ class bot_manage(commands.Cog):
             f"*[{current_time()}] 문의사항 등록*\n보낸 이: `{ctx.guild.name}`의 `{ctx.author}`님(`{ctx.author.id}`)\n>>> {question}"
         )
         await ctx.reply(
-            "문의사항이 전송되었습니다. 쿨타임은 30분입니다.\n답변을 받기 위해 DM을 허용해주세요."
+            "문의사항이 전송되었습니다. 쿨타임은 30분입니다.\n답변을 받기 위해서 DM을 허용해주세요.\n불필요하거나 허위문의시 해당 서버에서 봇이 중지될 수 있습니다."
         )
         print(f"[{current_time()}] Questioned by {ctx.author} in {ctx.guild.name}")
         print_user_server(ctx)
@@ -80,6 +80,23 @@ class bot_manage(commands.Cog):
             await ctx.send(f"{question.author}에게 답변을 성공적으로 보냈습니다.")
         except:
             await ctx.send("개인DM이 닫혀있는듯...")
+        return
+
+    @commands.command(aliases=["퇴출", "내보내기"])
+    @commands.is_owner()
+    async def leave_server(self, ctx: commands.Context, server_id: int):
+        """특정서버에서 봇 내보내는 함수"""
+        server = self.bot.get_guild(server_id)
+        if server:
+            await server.leave(
+                f"{server.name}에서 봇을 내보냈습니다. (ID: {server_id})"
+            )
+            print(f"[{current_time()}] Bot was left at {server.name}")
+            print_user_server(ctx)
+        else:
+            await ctx.send(
+                f"봇이 {server.name} 서버에 존재하지 않습니다. (ID: {server_id})"
+            )
         return
 
     @commands.Cog.listener()
