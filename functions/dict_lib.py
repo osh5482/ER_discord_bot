@@ -82,6 +82,7 @@ char_code = {
     "Katja": 72,
     "Charlotte": 73,
     "Darko": 74,
+    "Lenore": 75,
 }
 
 char_korean = {
@@ -159,6 +160,7 @@ char_korean = {
     "Katja": "카티야",
     "Charlotte": "샬럿",
     "Darko": "다르코",
+    "Lenore": "르노어",
 }
 
 char_english = {
@@ -236,6 +238,7 @@ char_english = {
     "카티야": "Katja",
     "샬럿": "Charlotte",
     "다르코": "Darko",
+    "르노어": "Lenore",
 }
 
 char_weapons = {
@@ -313,6 +316,7 @@ char_weapons = {
     "카티야": ["저격총"],
     "샬럿": ["아르카나"],
     "다르코": ["방망이"],
+    "르노어": ["기타"],
 }
 
 

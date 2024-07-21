@@ -51,10 +51,12 @@ class bot_manage(commands.Cog):
     @commands.command(aliases=["ㅁㅇ", "문의"])
     async def send_question(self, ctx: commands.Context, *, question):
         """나한테 문의사항 보내주는 함수"""
+        if True:  # 기능장금
+            return
 
         # 특정 서버에서 명령어 실행을 차단
-        restricted_server_id = 1001178691734347867
-        if ctx.guild.id == restricted_server_id:
+        restricted_server_id = [1001178691734347867]
+        if ctx.guild.id in restricted_server_id:
             await ctx.reply("산와머니는 서비스 종료다.")
             return
 
@@ -84,18 +86,24 @@ class bot_manage(commands.Cog):
 
     @commands.command(aliases=["퇴출", "내보내기"])
     @commands.is_owner()
-    async def leave_server(self, ctx: commands.Context, server_id: int):
-        """특정서버에서 봇 내보내는 함수"""
-        server = self.bot.get_guild(server_id)
+    async def leave_server(self, ctx: commands.Context, *, server_name: str):
+        """특정 서버에서 봇을 내보내는 함수"""
+        server = None
+
+        for guild in self.bot.guilds:
+            if guild.name == server_name:
+                server = guild
+                break
+
         if server:
-            await server.leave(
-                f"{server.name}에서 봇을 내보냈습니다. (ID: {server_id})"
-            )
-            print(f"[{current_time()}] Bot was left at {server.name}")
+            await server.leave()
+            await ctx.send(f"{server.name}에서 봇을 내보냈습니다. (ID: {server.id})")
+            print(f"[{current_time()}] Bot left the server: {server.name}")
             print_user_server(ctx)
+
         else:
             await ctx.send(
-                f"봇이 {server.name} 서버에 존재하지 않습니다. (ID: {server_id})"
+                f"봇이 해당 서버에 존재하지 않습니다. (서버 이름: {server_name})"
             )
         return
 

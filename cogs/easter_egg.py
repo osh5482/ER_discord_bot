@@ -7,7 +7,7 @@ class easter_egg(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.func_name = None
-        self.cooldown_time = 60
+        self.cooldown_time = 180
 
     @commands.Cog.listener()
     async def on_message(self, message):  #
@@ -29,6 +29,15 @@ class easter_egg(commands.Cog):
         if "젠장 마커스" in message.content:
             try:
                 await self.damn_it(message)
+                print_user_server(message)
+                return
+            except commands.CommandOnCooldown as e:
+                await self.on_command_error(message, e)
+                return
+
+        if "앙평" in message.content:
+            try:
+                await self.bianca_avg(message)
                 print_user_server(message)
                 return
             except commands.CommandOnCooldown as e:
@@ -63,6 +72,23 @@ class easter_egg(commands.Cog):
             print(f"[{current_time()}] 지옥끝까지 함께하겠다 이터널리턴!!!!")
         else:
             self.func_name = "ER_forever"
+            raise commands.CommandOnCooldown(
+                self.cooldown_time,
+                message.channel.id,
+                commands.BucketType.channel,
+            )
+
+    async def bianca_avg(self, message):
+        """앙평ㅋㅋㅋㅋ"""
+
+        self.func_name = "bianca_avg"
+        if await check_cooldown(self.func_name, self.cooldown_time):
+            with open("./image/bianca_avg.jpg", "rb") as f:
+                image = discord.File(f)
+            await message.reply(file=image)
+            print(f"[{current_time()}] 앙평ㅋㅋㅋㅋ")
+        else:
+            self.func_name = "bianca_avg"
             raise commands.CommandOnCooldown(
                 self.cooldown_time,
                 message.channel.id,
