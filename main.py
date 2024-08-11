@@ -106,7 +106,7 @@ async def main():
     """봇 실행 메인 함수"""
     await load_extensions()
     load_dotenv(verbose=True)
-    TOKEN = os.getenv("inferiority_token")
+    TOKEN = os.getenv("INFERIORITY_TOKEN")
     await bot.start(TOKEN)
 
 
