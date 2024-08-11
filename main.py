@@ -37,7 +37,7 @@ async def on_guild_join(guild):
     """10명이하 서버 자동퇴장"""
     member_count = guild.member_count
     owner_in_guild = any(member.id == bot.owner_id for member in guild.members)
-    if member_count < 10 and not owner_in_guild:
+    if member_count < 10 and owner_in_guild == False:
         for channel in guild.text_channels:
             if channel.permissions_for(guild.me).send_messages:
                 await channel.send(
