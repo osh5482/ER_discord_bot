@@ -106,8 +106,8 @@ async def main():
     """봇 실행 메인 함수"""
     await load_extensions()
     load_dotenv(verbose=True)
-    inferiority = os.getenv("inferiority")
-    await bot.start(inferiority)
+    TOKEN = os.getenv("inferiority")
+    await bot.start(TOKEN)
 
 
 if __name__ == "__main__":
