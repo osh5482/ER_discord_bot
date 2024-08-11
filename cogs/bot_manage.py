@@ -15,12 +15,12 @@ class bot_manage(commands.Cog):
         new_server = guild.system_channel
         server_info = (guild.name, guild.id)
         print(f"[{current_time()}] Bot was invited at {server_info}")
-        await self.bot.change_presence(
-            activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
-        )
+        # await self.bot.change_presence(
+        #     activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
+        # )
         if new_server:
             await asyncio.sleep(1)
-            await new_server.send(f"눈젖빵을 {len(self.bot.guilds)}개나 만들어 버려요~")
+            await new_server.send(f"추가 데미지 {len(self.bot.guilds)}% 입히는 중")
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
@@ -28,9 +28,9 @@ class bot_manage(commands.Cog):
         server_info = (guild.name, guild.id)
         print(f"[{current_time()}] Bot was kicked out at {server_info}")
 
-        await self.bot.change_presence(
-            activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
-        )
+        # await self.bot.change_presence(
+        #     activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
+        # )
 
     @commands.command(hidden=True, aliases=["ㅅㅂ", "서버"])
     @commands.is_owner()
