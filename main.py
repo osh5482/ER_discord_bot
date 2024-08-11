@@ -32,6 +32,21 @@ async def on_ready():
     await bot.change_presence(activity=discord.Game(name=f"열세극복"))
 
 
+@bot.event
+async def on_guild_join(guild):
+    """10명이하 서버 자동퇴장"""
+    member_count = guild.member_count
+    if member_count < 10:
+        for channel in guild.text_channels:
+            if channel.permissions_for(guild.me).send_messages:
+                await channel.send(
+                    f"열세극복을 하기 위해 최소 10명의 멤버가 필요합니다."
+                )
+                break
+        await guild.leave()
+        print(f"Left guild {guild.name} because it has only {member_count} members.")
+
+
 @bot.command(hidden=True)
 @commands.is_owner()
 async def load(ctx: commands.Context, *, module: str):

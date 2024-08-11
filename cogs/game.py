@@ -64,6 +64,7 @@ class game(commands.Cog):
 
         embed = discord.Embed(
             title="현재 동시 접속자",
+            # url=f"https://steamdb.info/app/1049590/charts/",
             description=f"**{in_game_user}** 명",
             color=0x00FF00,
         )
