@@ -371,7 +371,7 @@ async def get_iternity_rating():
         return None
 
 
-async def get_patchnote():
+async def get_patchnote() -> str:
     """공홈에서 제일 최근 메이저 패치노트 링크 가져오는 함수
     반환값 : str(최근 메이저 패치노트 url) /
     에러시 None"""
