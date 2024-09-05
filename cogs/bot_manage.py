@@ -15,6 +15,7 @@ class bot_manage(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.log_channel_id = 1227163092719374366
+        self.log_channel = self.bot.get_channel(self.log_channel_id)
 
     @app_commands.check(is_owner)
     @app_commands.command(name="서버", description="봇을 사용 중인 서버 갯수 확인")
@@ -69,9 +70,13 @@ class bot_manage(commands.Cog):
         new_server = guild.system_channel
         server_info = (guild.name, guild.id)
         print(f"[{current_time()}] Bot was invited at {server_info}")
+        await self.log_channel.send(
+            f"[{current_time()}] Bot was invited at {server_info}"
+        )
         await self.bot.change_presence(
             activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
         )
+
         if new_server:
             await asyncio.sleep(1)
             await new_server.send(f"눈젖빵을 {len(self.bot.guilds)}개나 만들어 버려요~")
@@ -81,10 +86,13 @@ class bot_manage(commands.Cog):
         """서버에서 봇 내보내질 때 로그 남김"""
         server_info = (guild.name, guild.id)
         print(f"[{current_time()}] Bot was kicked out at {server_info}")
+        await self.log_channel.send(
+            f"[{current_time()}] Bot was kicked out at {server_info}"
+        )
 
-        # await self.bot.change_presence(
-        #     activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
-        # )
+        await self.bot.change_presence(
+            activity=discord.Game(name=f"눈젖빵 {len(self.bot.guilds)}개째 제작")
+        )
 
 
 async def setup(bot):
