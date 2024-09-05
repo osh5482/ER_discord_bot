@@ -42,9 +42,9 @@ async def not_my_fault(ctx):
     await ctx.channel.send(file=file, embed=embed)
 
 
-def print_user_server(ctx):
-    user_name = ctx.author.name
-    server_name = ctx.guild.name
+def print_user_server(interaction: discord.Interaction):
+    user_name = interaction.user
+    server_name = interaction.guild
     print(f"└Processed by {user_name} in {server_name}")
 
 
