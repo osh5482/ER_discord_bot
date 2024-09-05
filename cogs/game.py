@@ -131,6 +131,7 @@ class game(commands.Cog):
             return
 
         rank_data = await ER.get_user_season_data(user_tuple)
+
         if rank_data == 404:
             code = 404
             char_name = "Leniticon"
@@ -140,6 +141,7 @@ class game(commands.Cog):
                 color=0x00FF00,
                 url=f"https://dak.gg/er/players/{name}",
             )
+
         elif rank_data == 0:
             code = rank_data
             char_name = "Nadja"
@@ -149,6 +151,7 @@ class game(commands.Cog):
                 color=0x00FF00,
                 url=f"https://dak.gg/er/players/{name}",
             )
+
         else:
             rank = format(rank_data["rank"], ",")
             tier = rank_data["tier"]
@@ -173,8 +176,8 @@ class game(commands.Cog):
             embed.add_field(name="승률", value=f"{win_rate}%", inline=True)
             embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
             embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
-            file_path = f"./image/char_profile/{code}_{char_name}.png"
 
+        file_path = f"./image/char_profile/{code}_{char_name}.png"
         embed.set_thumbnail(url=f"attachment://{char_name}.png")
         file = discord.File(file_path, filename=f"{char_name}.png")
         files_and_embeds.append((embed, file))

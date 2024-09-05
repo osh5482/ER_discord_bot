@@ -295,8 +295,10 @@ def is_ranker(rank, mmr):
         tier = "이터니티"
     elif rank < 700 and mmr > 7000:
         tier = "데미갓"
-    else:
+    elif mmr > 6800:
         tier = "미스릴"
+    else:
+        tier = "메테오라이트"
     return tier
 
 

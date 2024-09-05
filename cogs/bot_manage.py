@@ -17,7 +17,7 @@ class bot_manage(commands.Cog):
         self.log_channel_id = 1227163092719374366
 
     @app_commands.check(is_owner)
-    @app_commands.command(name="서버", description="봇이 현재 속한 서버 리스트 출력")
+    @app_commands.command(name="서버", description="봇을 사용 중인 서버 갯수 확인")
     async def servers(self, interaction: discord.Interaction):
         """봇이 있는 서버 리스트 출력"""
         servers = self.bot.guilds
@@ -28,7 +28,7 @@ class bot_manage(commands.Cog):
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         print(f"총 멤버 수: {total_members}")
         await interaction.response.send_message(
-            f"```{servers_str}\n 총 서버 갯수 : {len(server_list)}\n 총 멤버 수: {total_members}```",
+            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```",
             ephemeral=True,
         )
 

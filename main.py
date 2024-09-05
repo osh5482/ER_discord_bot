@@ -27,8 +27,7 @@ async def load_extensions():
 async def on_ready():
     """봇 시작하면 로그인 로그 print하고 상태 띄워주는 함수"""
     print(f"[{current_time()}] Logged in as {bot.user}")
-    bot.owner_id = (await bot.application_info()).owner.id
-    # bot.owner_id = 393987987005767690
+    bot.owner_id = 393987987005767690
     bot.log_channel = bot.get_channel(1227163092719374366)
     await bot.tree.sync()
     await bot.change_presence(
