@@ -1,6 +1,7 @@
 from datetime import datetime
 import time
 import discord
+import inspect
 
 
 def current_time():
@@ -48,9 +49,11 @@ def print_user_server(interaction: discord.Interaction):
     print(f"└Processed by {user_name} in {server_name}")
 
 
-async def logging_function(bot, interaction: discord.Interaction, function_name):
+async def logging_function(bot, interaction: discord.Interaction):
     """명령어 아니어도 로그 남기는 함수"""
     log_channel = bot.get_channel(1227163092719374366)
+    function_name = inspect.stack()[1].function  # 호출한 함수의 이름을 자동으로 가져옴
+
     await log_channel.send(
         f"*[{current_time()}]* `{function_name}` was processed by `{interaction.user}` in `{interaction.guild}`"
     )

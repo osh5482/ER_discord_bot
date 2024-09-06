@@ -22,9 +22,7 @@ class game(commands.Cog):
             f"[{current_time()}] Success getRecentPatchNote\nPatchNote url: {RecentMajorPatchNote}"
         )
         print_user_server(interaction)
-        await logging_function(
-            self.bot, interaction, function_name="get_recent_major_patchnote"
-        )
+        await logging_function(self.bot, interaction)
         return
 
     @app_commands.command(name="ㄷㅈ", description="현재 스팀 동접자 수를 확인합니다.")
@@ -73,7 +71,7 @@ class game(commands.Cog):
 
         print(f"[{current_time()}] Success getInGameUser {in_game_user} and save on DB")
         print_user_server(interaction)
-        await logging_function(self.bot, interaction, function_name="get_in_game_user")
+        await logging_function(self.bot, interaction)
 
     @app_commands.command(
         name="ㅅㅈ", description="현재 시즌의 남은 기한을 확인합니다."
@@ -101,9 +99,7 @@ class game(commands.Cog):
         await interaction.response.send_message(embed=embed)
         print(f"[{current_time()}] Success getSeasonRemaining")
         print_user_server(interaction)
-        await logging_function(
-            self.bot, interaction, function_name="get_season_remaining"
-        )
+        await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㄷㅁ", description="현재 데미갓 MMR 컷을 확인합니다.")
     async def check_demigod_rating(self, interaction: discord.Interaction):
@@ -113,9 +109,7 @@ class game(commands.Cog):
         await interaction.response.send_message(f"> 데미갓 컷 : **{rating}** 점")
         print(f"[{current_time()}] Success check_demigod_rating {rating}")
         print_user_server(interaction)
-        await logging_function(
-            self.bot, interaction, function_name="check_demigod_rating"
-        )
+        await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅇㅌ", description="현재 이터니티 MMR 컷을 확인합니다.")
     async def check_iternity_rating(self, interaction: discord.Interaction):
@@ -125,9 +119,7 @@ class game(commands.Cog):
         await interaction.response.send_message(f"> 이터니티 컷 : **{rating}** 점")
         print(f"[{current_time()}] Success check_iternity_rating {rating}")
         print_user_server(interaction)
-        await logging_function(
-            self.bot, interaction, function_name="check_iternity_rating"
-        )
+        await logging_function(self.bot, interaction)
 
     @app_commands.command(
         name="ㅈㅈ", description="유저의 현재 시즌 정보를 가져옵니다."
@@ -201,7 +193,7 @@ class game(commands.Cog):
 
         print(f"[{current_time()}] Success get user info {name}")
         print_user_server(interaction)
-        await logging_function(self.bot, interaction, function_name="get_user_info")
+        await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅌㄱ", description="캐릭터 통계를 가져옵니다.")
     @app_commands.describe(weapon="무기 이름", character="캐릭터 이름")
@@ -248,9 +240,7 @@ class game(commands.Cog):
                 f"[{current_time()}] Success get character statistics {weapon} {character}"
             )
             print_user_server(interaction)
-            await logging_function(
-                self.bot, interaction, function_name="get_character_statistics"
-            )
+            await logging_function(self.bot, interaction)
         except Exception as e:
             print("failed making embed", e)
             await interaction.response.send_message(
