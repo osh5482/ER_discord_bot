@@ -267,7 +267,7 @@ def detect_tier(userStats):
     반환값 : str(티어)"""
     mmr = userStats["mmr"]
 
-    if mmr >= 6800:
+    if mmr >= 6400:
         rank = userStats["rank"]
         userTier = is_ranker(rank, mmr)
         # print("Success: detecting user tier")
