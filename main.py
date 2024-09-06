@@ -37,19 +37,33 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
-    """10명이하 서버 자동퇴장"""
-    await guild.fetch_members()
-    member_count = guild.member_count
-    owner_in_guild = any(member.id == bot.owner_id for member in guild.members)
-    if member_count < 10 or not owner_in_guild:
-        for channel in guild.text_channels:
-            if channel.permissions_for(guild.me).send_messages:
-                await channel.send(
-                    f"눈젖빵을 제작하기 위해서는 최소 10명의 멤버가 필요합니다."
-                )
-                break
-        await guild.leave()
-        print(f"Left guild {guild.name} because it has only {member_count} members.")
+    """새로운 서버에 초대받았을 때 메시지 출력"""
+    await bot.change_presence(
+        activity=discord.Game(name=f"눈젖빵 {len(bot.guilds)}개째 제작")
+    )
+
+    new_server = guild.system_channel
+    server_info = (guild.name, guild.id)
+    print(f"[{current_time()}] Bot was invited at {server_info}")
+    await bot.log_channel.send(f"[{current_time()}] Bot was invited at {server_info}")
+
+    if new_server:
+        await asyncio.sleep(1)
+        await new_server.send(f"눈젖빵을 {len(bot.guilds)}개나 만들어 버려요~")
+
+
+@bot.event
+async def on_guild_remove(guild):
+    """서버에서 봇 내보내질 때 로그 남김"""
+    await bot.change_presence(
+        activity=discord.Game(name=f"눈젖빵 {len(bot.guilds)}개째 제작")
+    )
+
+    server_info = (guild.name, guild.id)
+    print(f"[{current_time()}] Bot was kicked out at {server_info}")
+    await bot.log_channel.send(
+        f"[{current_time()}] Bot was kicked out at {server_info}"
+    )
 
 
 async def main():
