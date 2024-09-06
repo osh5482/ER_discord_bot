@@ -22,15 +22,20 @@ class bot_manage(commands.Cog):
     async def servers(self, interaction: discord.Interaction):
         """봇이 있는 서버 리스트 출력"""
         servers = self.bot.guilds
-        total_members = sum(server.member_count for server in servers)
+
+        members = []
+        for server in servers:
+            members.update(member.id for member in server.members)
+        unique_members = set(members)
+
         server_list = [f"{server} / {server.member_count}" for server in servers]
         servers_str = "\n".join(server_list)
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
-        print(f"총 멤버 수: {total_members}")
-        print(f"총 멤버 수 (중복제외): {set(total_members)}")
+        print(f"총 멤버 수: {len(members)}")
+        print(f"중복제외 멤버 수: {len(unique_members)}")
         await interaction.response.send_message(
-            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}\n서버 멤버 수 (중복제외): {set(total_members)}```",
+            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {len(members)}\n중복제외 멤버수: {len(unique_members)}```",
             ephemeral=True,
         )
 
