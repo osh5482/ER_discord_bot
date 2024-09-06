@@ -20,7 +20,7 @@ async def load_extensions():
             else:
                 await bot.load_extension(f"cogs.{filename[:-3]}")
                 print(f"[{current_time()}] {filename} was sucessfully loaded")
-    print("All cogs successfully loaded")
+    print(f"[{current_time()}] All cogs successfully loaded")
 
 
 @bot.event
