@@ -34,8 +34,7 @@ class bot_manage(commands.Cog):
         print(f"총 멤버 수: {total_members}")
 
         await interaction.response.send_message(
-            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```",
-            ephemeral=True,
+            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```"
         )
 
     @commands.command(aliases=["퇴출", "내보내기"])
