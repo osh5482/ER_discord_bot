@@ -329,7 +329,7 @@ def find_characte_name(most_character_code, char_code=char_code):
     return None
 
 
-async def get_demigod_rating():
+async def get_demigod_rating() -> int:
     """데미갓 컷 알려주는 함수
     반환값 : int(데미갓 컷 점수) /
     에러시 None"""
@@ -351,7 +351,7 @@ async def get_demigod_rating():
         return None
 
 
-async def get_iternity_rating():
+async def get_iternity_rating() -> int:
     """이터니티 컷 알려주는 함수
     반환값 : int(이터니티 컷 점수) /
     에러시 None"""
