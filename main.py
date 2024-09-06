@@ -52,55 +52,6 @@ async def on_guild_join(guild):
         print(f"Left guild {guild.name} because it has only {member_count} members.")
 
 
-@bot.command(hidden=True)
-@commands.is_owner()
-async def load(ctx: commands.Context, *, module: str):
-    try:
-        await bot.load_extension(f"cogs.{module}")
-        print(f"[{current_time()}] {module} was sucessfully loaded")
-    except commands.ExtensionError as e:
-        await ctx.send(f"{e.__class__.__name__}: {e}")
-
-
-@bot.command(hidden=True)
-@commands.is_owner()
-async def unload(ctx: commands.Context, *, module: str):
-    """특정 cog 언로드"""
-    try:
-        await bot.unload_extension(f"cogs.{module}")
-        print(f"[{current_time()}] {module} was sucessfully unloaded")
-    except commands.ExtensionError as e:
-        await ctx.send(f"{e.__class__.__name__}: {e}")
-
-
-@bot.command(hidden=True)
-@commands.is_owner()
-async def reload(ctx: commands.Context, *, module: str):
-    """특정 cog 리로드"""
-    try:
-        await bot.reload_extension(f"cogs.{module}")
-        print(f"[{current_time()}] {module} was sucessfully reloaded")
-    except commands.ExtensionError as e:
-        await ctx.send(f"{e.__class__.__name__}: {e}")
-
-
-@bot.command(hidden=True)
-@commands.is_owner()
-async def all_reload(ctx: commands.Context):
-    """모든 cog 리로드"""
-    for filename in os.listdir("cogs"):
-        try:
-            if filename.endswith(".py"):
-                if filename == "test.py":
-                    pass
-                else:
-                    await bot.reload_extension(f"cogs.{filename[:-3]}")
-                    print(f"[{current_time()}] {filename} was sucessfully reloaded")
-        except commands.ExtensionError as e:
-            await ctx.send(f"{e.__class__.__name__}: {e}")
-    print("All cogs successfully reloaded")
-
-
 async def main():
     """봇 실행 메인 함수"""
     await load_extensions()
