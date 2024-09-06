@@ -26,17 +26,16 @@ class bot_manage(commands.Cog):
         server_list = [f"{server} / {server.member_count}" for server in servers]
         servers_str = "\n".join(server_list)
 
-        # 고유 멤버 수와 총 멤버 수를 계산
-        unique_members = set(server.members for server in servers)
+        # 총 멤버 수를 계산
         total_members = sum(server.member_count for server in servers)
 
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         print(f"총 멤버 수: {total_members}")
-        print(f"중복제외 멤버 수: {len(unique_members)}")
+        # print(f"중복제외 멤버 수: {len(unique_members)}")
 
         await interaction.response.send_message(
-            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}\n중복제외 멤버수: {len(unique_members)}```",
+            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```",
             ephemeral=True,
         )
 
