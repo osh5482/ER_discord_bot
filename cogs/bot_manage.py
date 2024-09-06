@@ -23,15 +23,11 @@ class bot_manage(commands.Cog):
         """봇이 있는 서버 리스트 출력"""
         servers = self.bot.guilds
 
-        # 중복을 제거한 멤버를 바로 set으로 수집
-        unique_members = set()
-        for server in servers:
-            unique_members.update(member.name for member in server.members)
-
         server_list = [f"{server} / {server.member_count}" for server in servers]
         servers_str = "\n".join(server_list)
 
         # 고유 멤버 수와 총 멤버 수를 계산
+        unique_members = set(server.members for server in servers)
         total_members = sum(server.member_count for server in servers)
 
         print(servers_str)
