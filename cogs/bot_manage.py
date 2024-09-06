@@ -28,8 +28,9 @@ class bot_manage(commands.Cog):
         print(servers_str)
         print(f"[{current_time()}] server cnt: {len(server_list)}")
         print(f"총 멤버 수: {total_members}")
+        print(f"총 멤버 수 (중복제외): {set(total_members)}")
         await interaction.response.send_message(
-            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```",
+            f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}\n서버 멤버 수 (중복제외): {set(total_members)}```",
             ephemeral=True,
         )
 
