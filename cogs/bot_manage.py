@@ -25,7 +25,7 @@ class bot_manage(commands.Cog):
 
         members = []
         for server in servers:
-            members.update(member.id for member in server.members)
+            members.extend(member.id for member in server.members)
         unique_members = set(members)
 
         server_list = [f"{server} / {server.member_count}" for server in servers]
