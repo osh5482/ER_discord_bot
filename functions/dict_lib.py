@@ -83,6 +83,7 @@ char_code = {
     "Charlotte": 73,
     "Darko": 74,
     "Lenore": 75,
+    "Garnet": 76,
 }
 
 char_korean = {
@@ -161,6 +162,7 @@ char_korean = {
     "Charlotte": "샬럿",
     "Darko": "다르코",
     "Lenore": "르노어",
+    "Garnet": "가넷",
 }
 
 char_english = {
@@ -239,6 +241,7 @@ char_english = {
     "샬럿": "Charlotte",
     "다르코": "Darko",
     "르노어": "Lenore",
+    "가넷": "Garnet",
 }
 
 char_weapons = {
@@ -317,6 +320,7 @@ char_weapons = {
     "샬럿": ["아르카나"],
     "다르코": ["방망이"],
     "르노어": ["기타"],
+    "가넷": ["방망이"],
 }
 
 
