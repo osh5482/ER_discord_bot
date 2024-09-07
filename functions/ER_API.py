@@ -1,11 +1,11 @@
-import asyncio
+import os
 import json
 import time
+import asyncio
 import aiohttp
 import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime
-import os
 from dotenv import load_dotenv
 
 from functions.dict_lib import *
@@ -37,7 +37,7 @@ async def get_current_player_api() -> int:
                 return None  # URL 접근 실패시 None 반환
 
 
-async def add_header(url) -> dict:
+async def add_header(url: str) -> dict:
     """
     url에 헤더 추가해주는 함수
     반환값 : dict(파이썬 객체) /
@@ -96,7 +96,7 @@ async def get_current_season() -> dict:
         all_season_data = response_json["data"]
 
         if all_season_data:
-            all_season_data.reverse()
+            all_season_data = all_season_data[::-1]
             # print(json.dumps(all_season_data, ensure_ascii=False, indent=2))
             for season_data in all_season_data:
                 if season_data["isCurrent"] == 1:
@@ -361,19 +361,6 @@ async def get_patchnote() -> str:
         return None
 
 
-async def get_route(id):
-    url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
-    response_json = await add_header(url)
-    print(json.dumps(response_json, ensure_ascii=False, indent=2))
-    return response_json
-
-
-async def get_meta_data(meta):
-    url = f"https://open-api.bser.io/v2/data/{meta}"
-    response_json = await add_header(url)
-    return response_json
-
-
 async def get_user_recent_games_10(user_num, next=None):
     """유저의 최근 10게임 반환
     반환값 : dict"""
@@ -399,16 +386,31 @@ async def get_user_recent_games_90d(user_num):
     return games
 
 
+async def get_route(id):
+    url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
+    response_json = await add_header(url)
+    print(json.dumps(response_json, ensure_ascii=False, indent=2))
+    return response_json
+
+
+async def get_meta_data(meta):
+    url = f"https://open-api.bser.io/v2/data/{meta}"
+    response_json = await add_header(url)
+    return response_json
+
+
 async def main():
     start_time = time.perf_counter()
 
-    data = await get_current_season()
+    data = await get_meta_data("hash")
     try:
-        data = data["data"]
+        data = data["data"][::-1]
+        pass
     except:
         pass
     finally:
         print(json.dumps(data, ensure_ascii=False, indent=2))
+        pass
 
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
