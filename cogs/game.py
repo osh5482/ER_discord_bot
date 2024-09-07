@@ -136,7 +136,7 @@ class game(commands.Cog):
         name="ㅈㅈ", description="유저의 현재 시즌 정보를 가져옵니다."
     )
     @app_commands.describe(name="닉네임")
-    async def user_info(self, interaction: discord.Interaction, name: str):
+    async def get_user_info(self, interaction: discord.Interaction, name: str):
         files_and_embeds = []
 
         user_tuple = await ER.get_user_num(name)

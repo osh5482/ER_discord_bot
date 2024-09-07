@@ -15,11 +15,8 @@ bot = commands.Bot(command_prefix="?", intents=intents)
 async def load_extensions():
     for filename in os.listdir("cogs"):
         if filename.endswith(".py"):
-            if filename == "test.py":
-                pass
-            else:
-                await bot.load_extension(f"cogs.{filename[:-3]}")
-                print(f"[{current_time()}] {filename} was sucessfully loaded")
+            await bot.load_extension(f"cogs.{filename[:-3]}")
+            print(f"[{current_time()}] {filename} was sucessfully loaded")
     print(f"[{current_time()}] All cogs successfully loaded")
 
 

@@ -1,3 +1,6 @@
+import asyncio
+import json
+import time
 import aiohttp
 import urllib.parse
 from bs4 import BeautifulSoup
@@ -9,32 +12,13 @@ from functions.dict_lib import *
 
 # from dict_lib import *
 
-import asyncio
-import json
-import time
-
 
 load_dotenv(verbose=True)
 ER_key = os.getenv("ER")
 steam_key = os.getenv("steam")
 
-# async def getCurrentPlayer_crawl():  # 웹 크롤링해서 동접 가져오는 함수
-#     url = "https://steamcommunity.com/app/1049590"
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get(url) as response:
-#             if response.status == 200:
-#                 html = await response.text()
-#                 soup = BeautifulSoup(html, "html.parser")
-#                 span = soup.find("span", class_="apphub_NumInApp")
-#                 currentPlayer, _ = span.text.split(" ")
-#                 currentPlayer = currentPlayer.replace(",", "")
-#                 return int(currentPlayer)
-#             else:
-#                 print(f"Error: Failed to fetch URL, status code {response.status}")
-#                 return None
 
-
-async def get_current_player_api():
+async def get_current_player_api() -> int:
     """스팀 api로 이리 동접 가져오는 함수
     반환값 : int(동접자수) / 에러시 None"""
     url = "https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?&appid=1049590"
@@ -53,7 +37,7 @@ async def get_current_player_api():
                 return None  # URL 접근 실패시 None 반환
 
 
-async def add_header(url):
+async def add_header(url) -> dict:
     """
     url에 헤더 추가해주는 함수
     반환값 : dict(파이썬 객체) /
@@ -73,7 +57,7 @@ async def add_header(url):
                 raise aiohttp.ClientResponseError(status=response.status)
 
 
-async def get_user_num(nickname):
+async def get_user_num(nickname) -> tuple:
     """
     닉네임으로 유저id를 가져오는 함수
     반환값 : tuple(유저id,유저 닉네임) /
@@ -101,7 +85,7 @@ async def get_user_num(nickname):
         return e  # 네트워크 에러처리
 
 
-async def get_current_season():
+async def get_current_season() -> dict:
     """현재 진행중인 시즌의 정보를 가져오는 함수
     반환값 : dict(현재시즌 정보) /
     통신에러인 경우 에러값"""
@@ -112,8 +96,13 @@ async def get_current_season():
         all_season_data = response_json["data"]
 
         if all_season_data:
-            current_season_data = all_season_data[-1]
-            return current_season_data
+            all_season_data.reverse()
+            # print(json.dumps(all_season_data, ensure_ascii=False, indent=2))
+            for season_data in all_season_data:
+                if season_data["isCurrent"] == 1:
+                    current_season_data = season_data
+                    return current_season_data
+            return
 
         else:
             print("Error: 'data' key not found in JSON response")
@@ -124,7 +113,7 @@ async def get_current_season():
         return response_json
 
 
-async def get_current_season_name():
+async def get_current_season_name() -> tuple:
     """현재시즌의 이름을 확인하는 함수
     반환값 : tuple(현재 시즌 데이터, 현재 시즌 이름) /
     에러시 None"""
@@ -153,7 +142,7 @@ async def get_current_season_name():
         return None
 
 
-async def end_current_season(current_season_data):
+async def end_current_season(current_season_data) -> str:
     """현재시즌 끝나는 날짜와 시간 가져오는 함수
     반환값 : str(끝나는 날짜) /
     에러시 None"""
@@ -171,7 +160,7 @@ async def end_current_season(current_season_data):
         return None
 
 
-async def remain_time(current_season_data):
+async def remain_time(current_season_data) -> list:
     """특정시즌 끝날때까지 남은 시간 계산하는 함수
     반환값 : list(남은시간 d,H,M) /
     에러시 None"""
@@ -227,7 +216,7 @@ async def get_user_season_data(user_tuple):
         base = "https://open-api.bser.io/v1/user/stats"
         current_season_data = await get_current_season()
         season_id = current_season_data["seasonID"]
-        para = f"/{user_num}/{season_id}"  # 3시즌 랭쿼드 데이터
+        para = f"/{user_num}/{season_id}"
         url = base + para
         response_json = await add_header(url)
 
@@ -243,25 +232,7 @@ async def get_user_season_data(user_tuple):
             return user_stats  # 유저의 랭크 데이터를 딕셔너리로 반환
 
 
-# async def getSimpleData(user_num):  # 유저 id로 기본 데이터 가져오는 함수
-#     if user_num is None:
-#         return None
-#     base = "https://open-api.bser.io/v1/"
-#     current_season_data = await getCurrentSeason()
-#     season_id = current_season_data["seasonID"]
-#     para = f"/{user_num}/{season_id}"  # 3시즌 랭쿼드 데이터
-#     url = base + para
-#     async with aiohttp.ClientSession() as session:
-#         async with session.get(url) as response:
-#             if response.status != 200:  # 데이터를 가져오지 못한 경우 None 반환
-#                 print("존재하지 않는 유저")
-#                 return None
-#             else:
-#                 data = await response.json()
-#                 return data["message"]
-
-
-def detect_tier(userStats):
+def detect_tier(userStats) -> str:
     """
     mmr에 따른 티어 탐지하는 함수
     반환값 : str(티어)"""
@@ -302,23 +273,7 @@ def is_ranker(rank, mmr):
     return tier
 
 
-# async def getMostCharacterCode(user_num):  # 유저 id로 모스트 캐릭터 코드 찾는 함수
-#     try:
-#         user_stats = await getUserSeasonData(user_num)
-#         if user_stats:
-#             character_stats = user_stats["characterStats"]
-#             most_character_code = character_stats[0]["characterCode"]
-#             print(most_character_code)
-#             return most_character_code
-#         else:
-#             print("Error: Failed to get user stats")
-#             return None
-#     except Exception as e:
-#         print(f"Error: {e}")
-#         return None
-
-
-def find_characte_name(most_character_code, char_code=char_code):
+def find_characte_name(most_character_code, char_code=char_code) -> tuple:
     """캐릭터 코드로 캐릭터 이름 찾는 함수
     반환값 : tuple(캐릭이름, 캐릭코드) /
     에러시 None"""
@@ -406,7 +361,7 @@ async def get_patchnote() -> str:
         return None
 
 
-async def get_routh(id):
+async def get_route(id):
     url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
     response_json = await add_header(url)
     print(json.dumps(response_json, ensure_ascii=False, indent=2))
@@ -414,7 +369,7 @@ async def get_routh(id):
 
 
 async def get_meta_data(meta):
-    url = f"https://open-api.bser.io/v1/data/{meta}"
+    url = f"https://open-api.bser.io/v2/data/{meta}"
     response_json = await add_header(url)
     return response_json
 
@@ -447,9 +402,13 @@ async def get_user_recent_games_90d(user_num):
 async def main():
     start_time = time.perf_counter()
 
-    tuples = await get_user_num("아니tlqk내솔로가")
-    a = await get_user_season_data(tuples)
-    print(json.dumps(a, ensure_ascii=False, indent=2))
+    data = await get_current_season()
+    try:
+        data = data["data"]
+    except:
+        pass
+    finally:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
 
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
