@@ -71,7 +71,7 @@ async def main():
     load_dotenv(verbose=True)
     BREAD_TOKEN = os.getenv("BREAD_TOKEN")
     INFERIORITY_TOKEN = os.getenv("INFERIORITY_TOKEN")
-    await bot.start(INFERIORITY_TOKEN)
+    await bot.start(BREAD_TOKEN)
 
 
 if __name__ == "__main__":
