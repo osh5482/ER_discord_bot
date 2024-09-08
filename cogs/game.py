@@ -106,12 +106,10 @@ class game(commands.Cog):
         """데미갓 컷 보는 함수"""
 
         rating = await ER.get_demigod_rating()
-        if rating >= 7000:
+        if rating:
             await interaction.response.send_message(f"> 데미갓 컷 : **{rating}** 점")
         else:
-            await interaction.response.send_message(
-                f"> 아직 데미갓 유저가 없습니다. (최고점수: {rating})"
-            )
+            await interaction.response.send_message(f"> 아직 데미갓 유저가 없습니다.")
 
         print(f"[{current_time()}] Success check_demigod_rating {rating}")
         print_user_server(interaction)
@@ -122,12 +120,10 @@ class game(commands.Cog):
         """이터 컷 보는 함수"""
 
         rating = await ER.get_iternity_rating()
-        if rating >= 7000:
+        if rating:
             await interaction.response.send_message(f"> 이터니티 컷 : **{rating}** 점")
         else:
-            await interaction.response.send_message(
-                f"> 아직 이터니티 유저가 없습니다. (최고점수: {rating})"
-            )
+            await interaction.response.send_message(f"> 아직 이터니티 유저가 없습니다.")
         print(f"[{current_time()}] Success check_iternity_rating {rating}")
         print_user_server(interaction)
         await logging_function(self.bot, interaction)

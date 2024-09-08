@@ -297,7 +297,17 @@ async def get_demigod_rating() -> int:
         response_json = await add_header(url)
 
         top_ranks = response_json["topRanks"]
-        last_demigod = top_ranks[699]
+        demigod_list = [
+            user
+            for user in top_ranks
+            if user["mmr"] >= 7000 and user["rank"] <= 700 and user["rank"] > 200
+        ]
+
+        if demigod_list:
+            last_demigod = max(demigod_list, key=lambda x: x["rank"])
+        else:
+            return None
+
         demigod_cut = last_demigod["mmr"]
         return demigod_cut
 
@@ -319,7 +329,15 @@ async def get_iternity_rating() -> int:
         response_json = await add_header(url)
 
         top_ranks = response_json["topRanks"]
-        last_iternity = top_ranks[199]
+        iternity_list = [
+            user for user in top_ranks if user["mmr"] >= 7000 and user["rank"] <= 200
+        ]
+
+        if iternity_list:
+            last_iternity = max(iternity_list, key=lambda x: x["rank"])
+        else:
+            return None
+
         iternity_cut = last_iternity["mmr"]
         return iternity_cut
 
@@ -402,9 +420,9 @@ async def get_meta_data(meta):
 async def main():
     start_time = time.perf_counter()
 
-    data = await get_meta_data("hash")
+    data = await get_demigod_rating()
     try:
-        data = data["data"][::-1]
+        # data = data["data"][::-1]
         pass
     except:
         pass

@@ -42,7 +42,9 @@ async def on_guild_join(guild):
     new_server = guild.system_channel
     server_info = (guild.name, guild.id)
     print(f"[{current_time()}] Bot was invited at {server_info}")
-    await bot.log_channel.send(f"[{current_time()}] Bot was invited at {server_info}")
+    await bot.log_channel.send(
+        f"*[{current_time()}]* Bot was invited at `{server_info}`"
+    )
 
     if new_server:
         await asyncio.sleep(1)
@@ -59,7 +61,7 @@ async def on_guild_remove(guild):
     server_info = (guild.name, guild.id)
     print(f"[{current_time()}] Bot was kicked out at {server_info}")
     await bot.log_channel.send(
-        f"[{current_time()}] Bot was kicked out at {server_info}"
+        f"*[{current_time()}]* Bot was kicked out at `{server_info}`"
     )
 
 
@@ -69,7 +71,7 @@ async def main():
     load_dotenv(verbose=True)
     BREAD_TOKEN = os.getenv("BREAD_TOKEN")
     INFERIORITY_TOKEN = os.getenv("INFERIORITY_TOKEN")
-    await bot.start(BREAD_TOKEN)
+    await bot.start(INFERIORITY_TOKEN)
 
 
 if __name__ == "__main__":
