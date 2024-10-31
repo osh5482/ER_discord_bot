@@ -84,6 +84,8 @@ char_code = {
     "Darko": 74,
     "Lenore": 75,
     "Garnet": 76,
+    "Yumin": 77,
+    "Hisui": 78,
 }
 
 char_korean = {
@@ -163,6 +165,8 @@ char_korean = {
     "Darko": "다르코",
     "Lenore": "르노어",
     "Garnet": "가넷",
+    "Yumin": "유민",
+    "Hisui": "히스이",
 }
 
 char_english = {
@@ -242,6 +246,8 @@ char_english = {
     "다르코": "Darko",
     "르노어": "Lenore",
     "가넷": "Garnet",
+    "유민": "Yumin",
+    "히스이": "Hisui",
 }
 
 char_weapons = {
@@ -321,6 +327,8 @@ char_weapons = {
     "다르코": ["방망이"],
     "르노어": ["기타"],
     "가넷": ["방망이"],
+    "유민": ["아르카나"],
+    "히스이": [],
 }
 
 
