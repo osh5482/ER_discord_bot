@@ -84,7 +84,7 @@ char_code = {
     "Darko": 74,
     "Lenore": 75,
     "Garnet": 76,
-    "Yumin": 77,
+    "YuMin": 77,
     "Hisui": 78,
 }
 
@@ -165,7 +165,7 @@ char_korean = {
     "Darko": "다르코",
     "Lenore": "르노어",
     "Garnet": "가넷",
-    "Yumin": "유민",
+    "YuMin": "유민",
     "Hisui": "히스이",
 }
 
@@ -246,7 +246,7 @@ char_english = {
     "다르코": "Darko",
     "르노어": "Lenore",
     "가넷": "Garnet",
-    "유민": "Yumin",
+    "유민": "YuMin",
     "히스이": "Hisui",
 }
 
