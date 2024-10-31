@@ -249,7 +249,7 @@ class game(commands.Cog):
             print_user_server(interaction)
             await logging_function(self.bot, interaction)
         except Exception as e:
-            print("failed making embed", e)
+            print("failed making embed: ", e)
             await interaction.response.send_message(
                 "통계를 가져오는 데 실패했습니다.", ephemeral=True
             )
