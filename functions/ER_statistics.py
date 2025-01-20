@@ -2,19 +2,7 @@ import json
 from functions.dict_lib import *
 from bs4 import BeautifulSoup
 import aiohttp
-
 import asyncio
-
-
-async def make_character_statistics(weapon, character):
-    statistics_dict = await dakgg_crawler(weapon, character)
-    statistics_dict["win"] = await get_statistics(statistics_dict["win"])
-    statistics_dict["top3"] = await get_statistics(statistics_dict["top3"])
-    statistics_dict["get_RP"] = await get_statistics_RP(statistics_dict["get_RP"])
-    statistics_dict["pick"] = await get_statistics(statistics_dict["pick"])
-    statistics_dict["avg_rank"] = await get_statistics(statistics_dict["avg_rank"])
-    statistics_dict["avg_kills"] = await get_statistics(statistics_dict["avg_kills"])
-    return statistics_dict
 
 
 async def dakgg_crawler(weapon, character_name):
@@ -28,23 +16,38 @@ async def dakgg_crawler(weapon, character_name):
             if response.status == 200:
                 html = await response.text()
                 soup = BeautifulSoup(html, "html.parser")
-                dl_tag = soup.find("dl")
-
-                statistics_list = str(dl_tag).split(
-                    '<div class="border border-r-0 border-[#e6e6e6]">'
-                )
 
                 statistics_dict = {
                     "code": char_code[f"{character_name}"],
                     "character_name": char_korean[f"{character_name}"],
                     "weapon": weapon_korean[f"{weapon}"],
-                    "win": statistics_list[1],
-                    "top3": statistics_list[2],
-                    "get_RP": statistics_list[3],
-                    "pick": statistics_list[4],
-                    "avg_rank": statistics_list[5],
-                    "avg_kills": statistics_list[6],
                 }
+
+                for div in soup.find_all("div", class_="css-13ulkth"):
+                    # 통계 이름 추출
+                    stat_name = div.find("div", class_="css-15s1b0v").text
+
+                    # 값 추출 (css-1afbsx1 또는 span 태그 확인)
+                    value_div = div.find("div", class_="css-1afbsx1")
+                    if value_div:
+                        value = value_div.text
+                        value = value.replace("%", " %")
+                    else:
+                        # span 태그가 있는 경우
+                        span_value = div.find("span")
+                        if span_value:
+                            value = span_value.text
+
+                    # 순위 정보 추출
+                    ranking: str = div.find("div", class_="css-1dt4uub").text
+                    ranking = ranking.replace("#", "")
+
+                    # 딕셔너리에 저장
+                    statistics_dict[stat_name] = {
+                        "value": value,
+                        "ranking": ranking,
+                    }
+
                 return statistics_dict
 
             else:  # 요청에 문제가 있는듯
@@ -53,39 +56,8 @@ async def dakgg_crawler(weapon, character_name):
                 raise aiohttp.ClientResponseError(status=response.status)
 
 
-async def get_statistics(dl):
-    """dl[0]으로 통계+순위 구해오는 함수
-    반환값 : list(str(퍼센트), str(순위))"""
-    try:
-        soup = BeautifulSoup(dl, "html.parser")
-        dd = soup.find("dd")
-        statistics = dd.contents[0].strip()
-        rank = dd.contents[1].get_text(strip=True)  # str(#순위/전체) 가져옴
-        return statistics, rank
-
-    except Exception as e:
-        print(e)
-
-
-async def get_statistics_RP(dl):
-    """dl[0]으로 통계+순위 구해오는 함수 (RP항목 전용)
-    반환값 : list(str(퍼센트), str(순위))"""
-    try:
-        soup = BeautifulSoup(dl, "html.parser")
-        dd = soup.find("dd")
-        image_and_number = dd.find("span", class_="flex").get_text(strip=True)
-        span_tags = dd.find_all("span")[1]
-        get_RP = image_and_number.split()[0]  # RP획득량 가져옴
-        rank = span_tags.get_text(strip=True)  # str(#순위/전체) 가져옴
-        return get_RP, rank
-
-    except Exception as e:
-        print(e)
-
-
 async def main():
-    s = await make_character_statistics("Rapier", "Chiara")
-    print(s)
+    return
 
 
 if __name__ == "__main__":

@@ -210,7 +210,8 @@ class game(commands.Cog):
         try:
             weapon_E = weapon_english[f"{weapon}"]
             character_E = char_english[f"{character}"]
-            s_dict = await gg.make_character_statistics(weapon_E, character_E)
+            s_dict = await gg.dakgg_crawler(weapon_E, character_E)
+            # print(s_dict)
 
             embed = discord.Embed(
                 title=f"{weapon} {character}",
@@ -218,12 +219,12 @@ class game(commands.Cog):
                 url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
             )
 
-            pick_percent = s_dict["pick"][0]
-            win_percent = s_dict["win"][0]
-            get_RP = s_dict["get_RP"][0]
-            pick_rank = s_dict["pick"][1][1:].replace("/", " / ")
-            win_rank = s_dict["win"][1][1:].replace("/", " / ")
-            get_RP_rank = s_dict["get_RP"][1][1:].replace("/", " / ")
+            pick_percent = s_dict["픽률"]["value"]
+            win_percent = s_dict["승률"]["value"]
+            get_RP = s_dict["RP 획득"]["value"]
+            pick_rank = s_dict["픽률"]["ranking"]
+            win_rank = s_dict["승률"]["ranking"]
+            get_RP_rank = s_dict["RP 획득"]["ranking"]
 
             embed.add_field(
                 name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True
@@ -232,7 +233,7 @@ class game(commands.Cog):
                 name="승률", value=f"{win_percent}\n{win_rank}", inline=True
             )
             embed.add_field(
-                name="RP획득량", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
+                name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
             )
             embed.set_footer(text="가장 최근 패치의 다이아+ 3일 통계입니다")
 
