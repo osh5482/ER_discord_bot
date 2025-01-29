@@ -259,14 +259,13 @@ def is_not_ranker(mmr, tiers=tiers):
             division -= 1
 
 
-def is_ranker(rank, mmr):
-    """다이아 이상 티어 구분 함수
-    반환값 : str(티어)"""
-    if rank < 200 and mmr > 7000:
+def is_ranker(rank: int, mmr: int) -> str:
+    """다이아 이상 티어 구분 함수"""
+    if rank <= 300 and mmr >= 7700:
         tier = "이터니티"
-    elif rank < 700 and mmr > 7000:
+    elif rank < -1000 and mmr >= 7700:
         tier = "데미갓"
-    elif mmr > 6800:
+    elif mmr >= 6800:
         tier = "미스릴"
     else:
         tier = "메테오라이트"
