@@ -299,7 +299,7 @@ async def get_demigod_rating() -> int:
         demigod_list = [
             user
             for user in top_ranks
-            if user["mmr"] >= 7000 and user["rank"] <= 700 and user["rank"] > 200
+            if user["mmr"] >= 7700 and user["rank"] <= 1000 and user["rank"] > 300
         ]
 
         if demigod_list:
@@ -323,13 +323,13 @@ async def get_iternity_rating() -> int:
         base = "https://open-api.bser.io/v1"
         current_season_data = await get_current_season()
         season_id = current_season_data["seasonID"]
-        para = f"/rank/top/{season_id}/3"  # 3시즌 랭쿼드 데이터
+        para = f"/rank/top/{season_id}/3"
         url = base + para
         response_json = await add_header(url)
 
         top_ranks = response_json["topRanks"]
         iternity_list = [
-            user for user in top_ranks if user["mmr"] >= 7000 and user["rank"] <= 200
+            user for user in top_ranks if user["mmr"] >= 7700 and user["rank"] <= 300
         ]
 
         if iternity_list:
