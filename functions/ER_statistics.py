@@ -23,12 +23,12 @@ async def dakgg_crawler(weapon, character_name):
                     "weapon": weapon_korean[f"{weapon}"],
                 }
 
-                for div in soup.find_all("div", class_="css-13ulkth"):
+                for div in soup.find_all("div", class_="css-n6szh2"):
                     # 통계 이름 추출
-                    stat_name = div.find("div", class_="css-15s1b0v").text
+                    stat_name = div.find("div", class_="css-dy7q68").text
 
-                    # 값 추출 (css-1afbsx1 또는 span 태그 확인)
-                    value_div = div.find("div", class_="css-1afbsx1")
+                    # 값 추출
+                    value_div = div.find("div", class_="css-1s2413a")
                     if value_div:
                         value = value_div.text
                         value = value.replace("%", " %")
@@ -39,7 +39,7 @@ async def dakgg_crawler(weapon, character_name):
                             value = span_value.text
 
                     # 순위 정보 추출
-                    ranking: str = div.find("div", class_="css-1dt4uub").text
+                    ranking: str = div.find("div", class_="css-1sw8f3s").text
                     ranking = ranking.replace("#", "")
 
                     # 딕셔너리에 저장
@@ -47,6 +47,7 @@ async def dakgg_crawler(weapon, character_name):
                         "value": value,
                         "ranking": ranking,
                     }
+                print(statistics_dict)
 
                 return statistics_dict
 
