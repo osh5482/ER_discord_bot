@@ -86,6 +86,8 @@ char_code = {
     "Garnet": 76,
     "YuMin": 77,
     "Hisui": 78,
+    "Justyna": 79,
+    "Istvan": 80,
 }
 
 char_korean = {
@@ -167,6 +169,8 @@ char_korean = {
     "Garnet": "가넷",
     "YuMin": "유민",
     "Hisui": "히스이",
+    "Justyna": "유스티나",
+    "Istvan": "이슈트반",
 }
 
 char_english = {
@@ -248,6 +252,8 @@ char_english = {
     "가넷": "Garnet",
     "유민": "YuMin",
     "히스이": "Hisui",
+    "유스티나": "Justyna",
+    "이슈트반": "Istvan",
 }
 
 char_weapons = {
@@ -329,6 +335,8 @@ char_weapons = {
     "가넷": ["방망이"],
     "유민": ["아르카나"],
     "히스이": ["양손검"],
+    "유스티나": ["석궁"],
+    "이슈트반": ["창"],
 }
 
 
