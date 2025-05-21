@@ -88,6 +88,7 @@ char_code = {
     "Hisui": 78,
     "Justyna": 79,
     "Istvan": 80,
+    "Niah": 81,
 }
 
 char_korean = {
@@ -171,6 +172,7 @@ char_korean = {
     "Hisui": "히스이",
     "Justyna": "유스티나",
     "Istvan": "이슈트반",
+    "Niah": "니아",
 }
 
 char_english = {
@@ -254,6 +256,7 @@ char_english = {
     "히스이": "Hisui",
     "유스티나": "Justyna",
     "이슈트반": "Istvan",
+    "니아": "Niah",
 }
 
 char_weapons = {
@@ -337,6 +340,7 @@ char_weapons = {
     "히스이": ["양손검"],
     "유스티나": ["석궁"],
     "이슈트반": ["창"],
+    "니아": ["권총"],
 }
 
 
