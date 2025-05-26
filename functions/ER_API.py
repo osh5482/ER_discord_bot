@@ -345,37 +345,19 @@ async def get_iternity_rating() -> int:
         return None
 
 
-async def get_patchnote() -> str:
-    """공홈에서 제일 최근 메이저 패치노트 링크 가져오는 함수
-    반환값 : str(최근 메이저 패치노트 url) /
+async def get_patchnote() -> dict:
+    """공홈에서 제일 최근 메이저 패치노트와 관련 마이너 패치노트 정보를 가져오는 함수
+    반환값 : dict({
+        "major_patch_version": str,  # 메이저 패치 버전
+        "major_patch_date": str,     # 메이저 패치 날짜
+        "major_patch_url": str,      # 메이저 패치 URL
+        "minor_patch_data": list     # 마이너 패치 리스트 [{"version": str, "url": str}, ...]
+    }) /
     에러시 None"""
-    try:
-        patch_note_list_url = (
-            "https://playeternalreturn.com/posts/news?categoryPath=patchnote"
-        )
-        async with aiohttp.ClientSession() as session:
-            async with session.get(patch_note_list_url) as response:
-                if response.status == 200:
-                    html = await response.text()
-                    soup = BeautifulSoup(html, "html.parser")
-                    tag_div = soup.find("ul", class_="er-articles")
-                    for li in tag_div.find_all("li"):
-                        h4 = li.find("h4", class_="er-article__title")
-                        if h4 and "PATCH NOTES" in h4.text:
-                            a = li.find("a", class_="er-article-link")
-                            if a:
-                                recent_patch_note = a["href"]
-                                return recent_patch_note
-                    print("Error: Failed to find patch note")
-                    return None
-                else:
-                    print(
-                        f"Error: Failed to fetch HTML, status code: {response.status}"
-                    )
-                    return None
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
+    from functions.patch_crawler import PatchNoteCrawler
+
+    crawler = PatchNoteCrawler()
+    return await crawler.get_patch_info()
 
 
 async def get_user_recent_games_10(user_num, next=None):

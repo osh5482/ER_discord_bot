@@ -13,17 +13,71 @@ class game(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="ㅍㄴ", description="제일 최근 메이저패치를 불러옵니다.")
+    @app_commands.command(
+        name="ㅍㄴ", description="제일 최근 메이저패치와 마이너패치 정보를 불러옵니다."
+    )
     async def get_recent_major_patchnote(self, interaction: discord.Interaction):
-        """제일 최근 메이저패치 가져오는 함수"""
-        RecentMajorPatchNote = await ER.get_patchnote()
-        await interaction.response.send_message(RecentMajorPatchNote)
-        print(
-            f"[{current_time()}] Success getRecentPatchNote\nPatchNote url: {RecentMajorPatchNote}"
-        )
+        """제일 최근 메이저패치와 마이너패치 가져오는 함수"""
+
+        # 로딩 메시지 표시
+        await interaction.response.defer()
+
+        patch_info = await ER.get_patchnote()
+
+        if patch_info is None:
+            await interaction.followup.send(
+                "패치노트 정보를 가져오는데 실패했습니다.", ephemeral=True
+            )
+            return
+
+        # 메이저 패치 정보 추출
+        major_version = patch_info.get("major_patch_version")
+        major_date = patch_info.get("major_patch_date")
+        major_url = patch_info.get("major_patch_url")
+        minor_patches = patch_info.get("minor_patch_data", [])
+
+        if not major_url:
+            await interaction.followup.send(
+                "최근 패치노트를 찾을 수 없습니다.", ephemeral=True
+            )
+            return
+
+        # Discord Embed 생성
+        embed = discord.Embed(title=f"🔧 최신 패치노트", color=0x00FF00)
+
+        # 메이저 패치 정보
+        major_info = f"**버전:** [**{major_version}**]({major_url})"
+        if major_date:
+            major_info += f"\n**날짜:** {major_date}"
+
+        embed.add_field(name="📋 메이저 패치", value=major_info, inline=False)
+
+        # 마이너 패치 정보
+        if minor_patches:
+            minor_info = ""
+            for i, patch in enumerate(minor_patches):
+                if i == len(minor_patches) - 1:
+                    minor_info += f"[**{patch['version']}**]({patch['url']})  "
+                else:
+                    minor_info += f"[{patch['version']}]({patch['url']})  "
+            minor_info = minor_info.strip()
+            embed.add_field(name="🔨 마이너 패치", value=minor_info, inline=False)
+        else:
+            embed.add_field(
+                name="🔨 마이너 패치",
+                value="해당 버전의 마이너 패치가 없습니다.",
+                inline=False,
+            )
+
+        embed.set_footer(text="Eternal Return 공식 웹사이트에서 가져온 정보입니다.")
+
+        await interaction.followup.send(embed=embed)
+
+        print(f"[{current_time()}] Success getRecentPatchNote")
+        print(f"Major: {major_version} ({major_date}) - {major_url}")
+        print(f"Minor patches: {len(minor_patches)}개")
         print_user_server(interaction)
         await logging_function(self.bot, interaction)
-        return
 
     @app_commands.command(name="ㄷㅈ", description="현재 스팀 동접자 수를 확인합니다.")
     async def get_in_game_user(self, interaction: discord.Interaction):
