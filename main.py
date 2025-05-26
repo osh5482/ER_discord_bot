@@ -17,6 +17,7 @@ async def load_extensions():
         if filename.endswith(".py"):
             await bot.load_extension(f"cogs.{filename[:-3]}")
             print(f"[{current_time()}] {filename} was sucessfully loaded")
+    await bot.tree.sync()
     print(f"[{current_time()}] All cogs successfully loaded")
 
 
