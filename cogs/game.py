@@ -73,9 +73,7 @@ class game(commands.Cog):
             )
 
         # 마지막 업데이트 시간 추가
-        embed.set_footer(
-            text=f"마지막 업데이트: {last_updated} | Eternal Return 공식 웹사이트"
-        )
+        embed.set_footer(text=f"마지막 업데이트: {last_updated}")
 
         await interaction.followup.send(embed=embed)
 
