@@ -209,7 +209,7 @@ class PatchNoteCrawler:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # 결과 수집
-            for result in results:
+            for result in list(reversed(results)):
                 if isinstance(result, dict) and result:
                     minor_patches.append(result)
                     print(f"  - 마이너 패치 발견: {result['version']}")
@@ -243,28 +243,11 @@ class PatchNoteCrawler:
 _patch_cache = {"data": None, "timestamp": 0, "cache_duration": 300}  # 5분 캐시
 
 
-async def get_cached_patch_info():
-    """캐시된 패치노트 정보 반환"""
-    import time
-
-    current_time = time.time()
-
-    # 캐시 유효성 확인
-    if (
-        _patch_cache["data"]
-        and current_time - _patch_cache["timestamp"] < _patch_cache["cache_duration"]
-    ):
-        print("✅ 캐시된 패치노트 정보 사용")
-        return _patch_cache["data"]
-
+async def get_patch_info():
+    """패치노트 정보 반환"""
     # 새로운 크롤링 실행
     print("🔄 새로운 패치노트 정보 크롤링...")
     async with PatchNoteCrawler() as crawler:
         patch_info = await crawler.get_patch_info()
-
-        if patch_info:
-            _patch_cache["data"] = patch_info
-            _patch_cache["timestamp"] = current_time
-            print("✅ 패치노트 정보 캐시 업데이트")
 
         return patch_info

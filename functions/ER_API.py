@@ -347,9 +347,9 @@ async def get_iternity_rating() -> int:
 
 async def get_patchnote() -> dict:
     """최적화된 패치노트 정보 가져오기 함수"""
-    from functions.patch_crawler import get_cached_patch_info
+    from functions.patch_crawler import get_patch_info
 
-    return await get_cached_patch_info()
+    return await get_patch_info()
 
 
 async def get_user_recent_games_10(user_num, next=None):

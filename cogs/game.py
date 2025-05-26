@@ -17,16 +17,18 @@ class game(commands.Cog):
         name="ㅍㄴ", description="제일 최근 메이저패치와 마이너패치 정보를 불러옵니다."
     )
     async def get_recent_major_patchnote(self, interaction: discord.Interaction):
-        """제일 최근 메이저패치와 마이너패치 가져오는 함수"""
+        """제일 최근 메이저패치와 마이너패치 가져오는 함수 (DB에서 조회)"""
 
         # 로딩 메시지 표시
         await interaction.response.defer()
 
-        patch_info = await ER.get_patchnote()
+        # DB에서 패치노트 정보 조회
+        patch_info = await get_patch_notes_from_db()
 
         if patch_info is None:
             await interaction.followup.send(
-                "패치노트 정보를 가져오는데 실패했습니다.", ephemeral=True
+                "저장된 패치노트 정보가 없습니다. 잠시 후 다시 시도해주세요.",
+                ephemeral=True,
             )
             return
 
@@ -35,6 +37,7 @@ class game(commands.Cog):
         major_date = patch_info.get("major_patch_date")
         major_url = patch_info.get("major_patch_url")
         minor_patches = patch_info.get("minor_patch_data", [])
+        last_updated = patch_info.get("last_updated")
 
         if not major_url:
             await interaction.followup.send(
@@ -69,13 +72,58 @@ class game(commands.Cog):
                 inline=False,
             )
 
-        embed.set_footer(text="Eternal Return 공식 웹사이트에서 가져온 정보입니다.")
+        # 마지막 업데이트 시간 추가
+        embed.set_footer(
+            text=f"마지막 업데이트: {last_updated} | Eternal Return 공식 웹사이트"
+        )
 
         await interaction.followup.send(embed=embed)
 
-        print(f"[{current_time()}] Success getRecentPatchNote")
+        print(f"[{current_time()}] Success getRecentPatchNote from DB")
         print(f"Major: {major_version} ({major_date}) - {major_url}")
         print(f"Minor patches: {len(minor_patches)}개")
+        print(f"Last updated: {last_updated}")
+        print_user_server(interaction)
+        await logging_function(self.bot, interaction)
+
+    @app_commands.command(
+        name="ㅍㄴ새로고침",
+        description="패치노트를 즉시 새로 크롤링합니다. (관리자 전용)",
+    )
+    async def refresh_patchnote(self, interaction: discord.Interaction):
+        """패치노트를 즉시 새로고침하는 함수 (관리자 전용)"""
+
+        # 관리자 권한 확인 (필요에 따라 수정)
+        if interaction.user.id != 393987987005767690:  # BOT_OWNER_ID
+            await interaction.response.send_message(
+                "이 명령어는 봇 관리자만 사용할 수 있습니다.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        print(f"[{current_time()}] 관리자가 패치노트 새로고침을 요청했습니다.")
+
+        try:
+            success = await save_patch_notes_to_db()
+
+            if success:
+                await interaction.followup.send(
+                    "✅ 패치노트가 성공적으로 새로고침되었습니다.", ephemeral=True
+                )
+                print(f"[{current_time()}] 패치노트 수동 새로고침 완료")
+            else:
+                await interaction.followup.send(
+                    "❌ 패치노트 새로고침에 실패했습니다.", ephemeral=True
+                )
+                print(f"[{current_time()}] 패치노트 수동 새로고침 실패")
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ 패치노트 새로고침 중 오류가 발생했습니다: {e}", ephemeral=True
+            )
+            print(f"[{current_time()}] 패치노트 수동 새로고침 오류: {e}")
+
         print_user_server(interaction)
         await logging_function(self.bot, interaction)
 
