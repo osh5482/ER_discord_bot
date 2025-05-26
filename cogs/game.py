@@ -57,6 +57,7 @@ class game(commands.Cog):
 
         # 마이너 패치 정보
         if minor_patches:
+            minor_patches = list(reversed(minor_patches))  # 최신순으로 정렬
             minor_info = ""
             for i, patch in enumerate(minor_patches):
                 if i == len(minor_patches) - 1:
