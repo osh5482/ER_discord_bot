@@ -346,18 +346,10 @@ async def get_iternity_rating() -> int:
 
 
 async def get_patchnote() -> dict:
-    """공홈에서 제일 최근 메이저 패치노트와 관련 마이너 패치노트 정보를 가져오는 함수
-    반환값 : dict({
-        "major_patch_version": str,  # 메이저 패치 버전
-        "major_patch_date": str,     # 메이저 패치 날짜
-        "major_patch_url": str,      # 메이저 패치 URL
-        "minor_patch_data": list     # 마이너 패치 리스트 [{"version": str, "url": str}, ...]
-    }) /
-    에러시 None"""
-    from functions.patch_crawler import PatchNoteCrawler
+    """최적화된 패치노트 정보 가져오기 함수"""
+    from functions.patch_crawler import get_cached_patch_info
 
-    crawler = PatchNoteCrawler()
-    return await crawler.get_patch_info()
+    return await get_cached_patch_info()
 
 
 async def get_user_recent_games_10(user_num, next=None):

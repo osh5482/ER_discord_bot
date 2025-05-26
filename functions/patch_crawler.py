@@ -1,31 +1,49 @@
 import re
+import asyncio
 import platform
 from urllib.parse import urljoin
 from playwright.async_api import async_playwright
 
 
 class PatchNoteCrawler:
-    """Eternal Return 패치노트 크롤링 클래스"""
+    """최적화된 Eternal Return 패치노트 크롤링 클래스"""
 
     def __init__(self):
         self.base_url = (
             "https://playeternalreturn.com/posts/news?categoryPath=patchnote"
         )
+        # 브라우저 재사용을 위한 인스턴스 변수
+        self._browser = None
+        self._context = None
+
+    async def __aenter__(self):
+        """컨텍스트 매니저 진입 - 브라우저 초기화"""
+        self._playwright = await async_playwright().start()
+        self._browser = await self._launch_browser()
+        self._context = await self._browser.new_context(
+            locale="ko-KR",
+            # 성능 최적화 옵션
+            viewport={"width": 1280, "height": 720},
+            ignore_https_errors=True,
+            java_script_enabled=True,
+            # 불필요한 리소스 비활성화
+            bypass_csp=True,
+        )
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """컨텍스트 매니저 종료 - 리소스 정리"""
+        if self._context:
+            await self._context.close()
+        if self._browser:
+            await self._browser.close()
+        if self._playwright:
+            await self._playwright.stop()
 
     async def get_patch_info(self) -> dict:
         """
-        최신 메이저 패치노트와 관련 마이너 패치노트 정보를 가져오는 함수
-
-        Returns:
-            dict: {
-                "major_patch_version": str,  # 메이저 패치 버전
-                "major_patch_date": str,     # 메이저 패치 날짜
-                "major_patch_url": str,      # 메이저 패치 URL
-                "minor_patch_data": list     # 마이너 패치 리스트
-            }
-            에러시 None
+        최적화된 패치노트 정보 수집 (기존 함수명 유지)
         """
-        browser = None
         crawling_results = {
             "major_patch_version": None,
             "major_patch_date": None,
@@ -34,134 +52,176 @@ class PatchNoteCrawler:
         }
 
         try:
-            async with async_playwright() as p:
-                browser = await self._launch_browser(p)
-                context = await browser.new_context(locale="ko-KR")
-                page = await context.new_page()
+            page = await self._context.new_page()
 
-                await self._load_page(page)
+            # 성능 최적화: 불필요한 리소스 차단
+            await page.route(
+                "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf}",
+                lambda route: route.abort(),
+            )
+            await page.route("**/analytics**", lambda route: route.abort())
+            await page.route("**/ads**", lambda route: route.abort())
 
-                # 메이저 패치 정보 추출
-                major_version, major_date, major_url = await self._extract_major_patch(
-                    page
+            # 빠른 페이지 로드
+            await self._load_page(page)
+
+            # 메이저 패치 정보 추출
+            major_version, major_date, major_url = await self._extract_major_patch(page)
+            crawling_results.update(
+                {
+                    "major_patch_version": major_version,
+                    "major_patch_date": major_date,
+                    "major_patch_url": major_url,
+                }
+            )
+
+            # 메이저 패치를 찾았다면 마이너 패치도 검색
+            if major_version and major_url:
+                minor_data = await self._extract_minor_patches(
+                    page, major_version, major_url
                 )
-                crawling_results.update(
-                    {
-                        "major_patch_version": major_version,
-                        "major_patch_date": major_date,
-                        "major_patch_url": major_url,
-                    }
-                )
+                crawling_results["minor_patch_data"] = minor_data
 
-                # 마이너 패치 정보 추출
-                if major_version and major_url:
-                    minor_data = await self._extract_minor_patches(
-                        page, major_version, major_url
-                    )
-                    crawling_results["minor_patch_data"] = minor_data
+            await page.close()
 
         except Exception as e:
             print(f"크롤링 중 오류 발생: {e}")
             return None
-        finally:
-            if browser:
-                await browser.close()
 
         return crawling_results
 
-    async def _launch_browser(self, playwright):
-        """OS에 따른 브라우저 설정 및 실행"""
+    async def _launch_browser(self):
+        """최적화된 브라우저 설정"""
         current_os = platform.system()
         print(f"운영체제 감지: {current_os}")
 
-        if current_os == "Windows":
-            # 윈도우: Chromium 사용 (기본 설정)
-            print("윈도우 환경: Chromium 브라우저 사용")
-            browser = await playwright.chromium.launch(headless=True)
+        # 공통 최적화 옵션
+        common_args = [
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--disable-web-security",
+            "--disable-features=VizDisplayCompositor",
+            "--disable-background-timer-throttling",
+            "--disable-backgrounding-occluded-windows",
+            "--disable-renderer-backgrounding",
+            "--disable-extensions",
+            "--disable-default-apps",
+            "--disable-sync",
+            "--disable-translate",
+            "--disable-background-networking",
+            "--disable-plugins",
+            "--disable-print-preview",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--single-process",  # 단일 프로세스로 메모리 사용량 줄임
+            "--memory-pressure-off",
+        ]
 
-        elif current_os == "Linux":
-            # 리눅스: Firefox 사용 (더 안정적)
-            print("리눅스 환경: Firefox 브라우저 사용")
+        if current_os == "Linux":
             try:
-                browser = await playwright.firefox.launch(
+                print("리눅스 환경: Firefox 브라우저 사용")
+                browser = await self._playwright.firefox.launch(
                     headless=True,
                     firefox_user_prefs={
                         "dom.webnotifications.enabled": False,
                         "dom.push.enabled": False,
+                        "media.autoplay.enabled": False,
+                        "permissions.default.image": 2,  # 이미지 차단
                     },
                 )
             except Exception as e:
                 print(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
-                # Firefox 실패시 Chromium으로 대체 (리눅스 안전 옵션)
-                browser = await playwright.chromium.launch(
+                browser = await self._playwright.chromium.launch(
                     headless=True,
-                    args=[
-                        "--no-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--disable-setuid-sandbox",
-                        "--no-first-run",
-                        "--no-zygote",
-                        "--single-process",
-                        "--disable-web-security",
-                        "--disable-features=VizDisplayCompositor",
-                    ],
+                    args=common_args,
                 )
-
-        elif current_os == "Darwin":  # macOS
-            # macOS: Chromium 사용 (기본 설정)
-            print("macOS 환경: Chromium 브라우저 사용")
-            browser = await playwright.chromium.launch(headless=True)
-
         else:
-            # 기타 OS: 기본 Chromium 사용
-            print(f"알 수 없는 운영체제 ({current_os}): 기본 Chromium 사용")
-            browser = await playwright.chromium.launch(headless=True)
+            print(f"{current_os} 환경: Chromium 브라우저 사용")
+            browser = await self._playwright.chromium.launch(
+                headless=True,
+                args=common_args,
+            )
 
         return browser
 
     async def _load_page(self, page):
-        """페이지 로드 및 대기"""
+        """최적화된 페이지 로드"""
         print(f"페이지 로딩 중: {self.base_url}...")
-        await page.goto(self.base_url)
-        await page.wait_for_selector("h4.article-title", timeout=10000)
-        print("페이지 로드 완료.")
+        try:
+            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=8000)
+            await page.wait_for_selector("h4.article-title", timeout=5000)
+            print("페이지 로드 완료.")
+        except Exception as e:
+            print(f"페이지 로드 중 타임아웃: {e}")
+            # 타임아웃이어도 이미 로드된 콘텐츠로 진행
 
     async def _extract_major_patch(self, page):
-        """메이저 패치노트 정보 추출"""
-        article_elements = await page.locator("h4.article-title").all()
+        """최적화된 메이저 패치 추출"""
+        try:
+            article_elements = await page.locator("h4.article-title").all()
 
-        for title_locator in article_elements:
-            title_text = await title_locator.text_content()
+            # 상위 10개만 검색하여 속도 향상
+            for title_locator in article_elements[:10]:
+                title_text = await title_locator.text_content()
 
-            if "PATCH NOTES" in title_text or "패치노트" in title_text:
-                version_match = re.search(
-                    r"(\d+\.\d+)\s*(?:PATCH NOTES|패치노트)", title_text, re.IGNORECASE
-                )
-                date_match = re.search(r"(\d{4}\.\d{2}\.\d{2})", title_text)
+                if "PATCH NOTES" in title_text or "패치노트" in title_text:
+                    version_match = re.search(
+                        r"(\d+\.\d+)\s*(?:PATCH NOTES|패치노트)",
+                        title_text,
+                        re.IGNORECASE,
+                    )
+                    date_match = re.search(r"(\d{4}\.\d{2}\.\d{2})", title_text)
 
-                if version_match:
-                    version = version_match.group(1)
-                    date = date_match.group(1) if date_match else None
+                    if version_match:
+                        version = version_match.group(1)
+                        date = date_match.group(1) if date_match else None
 
-                    parent_a = title_locator.locator("xpath=ancestor::a[1]")
-                    relative_url = await parent_a.get_attribute("href")
+                        parent_a = title_locator.locator("xpath=ancestor::a[1]")
+                        relative_url = await parent_a.get_attribute("href")
 
-                    if relative_url:
-                        url = urljoin(self.base_url, relative_url)
-                        print(f"✅ 메이저 패치 발견: {version} - {url}")
-                        return version, date, url
+                        if relative_url:
+                            url = urljoin(self.base_url, relative_url)
+                            print(f"✅ 메이저 패치 발견: {version} - {url}")
+                            return version, date, url
+
+        except Exception as e:
+            print(f"메이저 패치 추출 중 오류: {e}")
 
         return None, None, None
 
     async def _extract_minor_patches(self, page, major_version, major_url):
-        """마이너 패치노트 정보 추출"""
+        """최적화된 마이너 패치 추출"""
         minor_patches = []
         minor_pattern = re.compile(rf"({re.escape(major_version)}[a-z])", re.IGNORECASE)
 
-        article_elements = await page.locator("h4.article-title").all()
+        try:
+            article_elements = await page.locator("h4.article-title").all()
 
-        for title_locator in article_elements:
+            # 병렬 처리를 위한 작업 리스트
+            tasks = []
+            for title_locator in article_elements[:20]:  # 상위 20개만 검색
+                tasks.append(
+                    self._process_minor_patch(title_locator, minor_pattern, major_url)
+                )
+
+            # 병렬 처리 실행
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # 결과 수집
+            for result in results:
+                if isinstance(result, dict) and result:
+                    minor_patches.append(result)
+                    print(f"  - 마이너 패치 발견: {result['version']}")
+
+        except Exception as e:
+            print(f"마이너 패치 추출 중 오류: {e}")
+
+        return list(reversed(minor_patches))  # 최신순 정렬
+
+    async def _process_minor_patch(self, title_locator, minor_pattern, major_url):
+        """개별 마이너 패치 처리"""
+        try:
             title_text = await title_locator.text_content()
             minor_match = minor_pattern.search(title_text)
 
@@ -173,7 +233,38 @@ class PatchNoteCrawler:
                 if relative_url:
                     url = urljoin(self.base_url, relative_url)
                     if url != major_url:  # 중복 방지
-                        minor_patches.append({"version": minor_version, "url": url})
-                        print(f"  - 마이너 패치 발견: {minor_version}")
+                        return {"version": minor_version, "url": url}
+        except Exception:
+            pass
+        return None
 
-        return list(reversed(minor_patches))  # 최신순 정렬
+
+# 캐싱 시스템
+_patch_cache = {"data": None, "timestamp": 0, "cache_duration": 300}  # 5분 캐시
+
+
+async def get_cached_patch_info():
+    """캐시된 패치노트 정보 반환"""
+    import time
+
+    current_time = time.time()
+
+    # 캐시 유효성 확인
+    if (
+        _patch_cache["data"]
+        and current_time - _patch_cache["timestamp"] < _patch_cache["cache_duration"]
+    ):
+        print("✅ 캐시된 패치노트 정보 사용")
+        return _patch_cache["data"]
+
+    # 새로운 크롤링 실행
+    print("🔄 새로운 패치노트 정보 크롤링...")
+    async with PatchNoteCrawler() as crawler:
+        patch_info = await crawler.get_patch_info()
+
+        if patch_info:
+            _patch_cache["data"] = patch_info
+            _patch_cache["timestamp"] = current_time
+            print("✅ 패치노트 정보 캐시 업데이트")
+
+        return patch_info
