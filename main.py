@@ -22,7 +22,7 @@ async def load_extensions():
 
 @bot.event
 async def on_ready():
-    """봇 시작하면 로그인 로그 print하고 상태 띄워주는 함수"""
+    """봇 시작하면 로그인 로그 출력력하고 상태 띄워주는 함수"""
     print(f"[{current_time()}] Logged in as {bot.user}")
     bot.owner_id = 393987987005767690
     bot.log_channel = bot.get_channel(1227163092719374366)
