@@ -27,7 +27,7 @@ Steam 게임 이터널 리턴과 관련된 다양한 정보를 제공하는 Disc
 1.  **Python 설치:** Python 3.8 이상 버전을 설치합니다.
 2.  **라이브러리 설치:**
     ```bash
-    pip install discord.py python-dotenv aiohttp beautifulsoup4
+    pip install discord.py python-dotenv aiohttp Playwright
     ```
     (추후 `requirements.txt` 파일이 제공될 예정입니다.)
 3.  **환경 변수 설정:**
