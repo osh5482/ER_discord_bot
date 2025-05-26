@@ -1,4 +1,5 @@
 import re
+import platform
 from urllib.parse import urljoin
 from playwright.async_api import async_playwright
 
@@ -34,7 +35,7 @@ class PatchNoteCrawler:
 
         try:
             async with async_playwright() as p:
-                browser = await p.chromium.launch(headless=True)
+                browser = await self._launch_browser(p)
                 context = await browser.new_context(locale="ko-KR")
                 page = await context.new_page()
 
@@ -67,6 +68,57 @@ class PatchNoteCrawler:
                 await browser.close()
 
         return crawling_results
+
+    async def _launch_browser(self, playwright):
+        """OS에 따른 브라우저 설정 및 실행"""
+        current_os = platform.system()
+        print(f"운영체제 감지: {current_os}")
+
+        if current_os == "Windows":
+            # 윈도우: Chromium 사용 (기본 설정)
+            print("윈도우 환경: Chromium 브라우저 사용")
+            browser = await playwright.chromium.launch(headless=True)
+
+        elif current_os == "Linux":
+            # 리눅스: Firefox 사용 (더 안정적)
+            print("리눅스 환경: Firefox 브라우저 사용")
+            try:
+                browser = await playwright.firefox.launch(
+                    headless=True,
+                    firefox_user_prefs={
+                        "dom.webnotifications.enabled": False,
+                        "dom.push.enabled": False,
+                    },
+                )
+            except Exception as e:
+                print(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
+                # Firefox 실패시 Chromium으로 대체 (리눅스 안전 옵션)
+                browser = await playwright.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--disable-setuid-sandbox",
+                        "--no-first-run",
+                        "--no-zygote",
+                        "--single-process",
+                        "--disable-web-security",
+                        "--disable-features=VizDisplayCompositor",
+                    ],
+                )
+
+        elif current_os == "Darwin":  # macOS
+            # macOS: Chromium 사용 (기본 설정)
+            print("macOS 환경: Chromium 브라우저 사용")
+            browser = await playwright.chromium.launch(headless=True)
+
+        else:
+            # 기타 OS: 기본 Chromium 사용
+            print(f"알 수 없는 운영체제 ({current_os}): 기본 Chromium 사용")
+            browser = await playwright.chromium.launch(headless=True)
+
+        return browser
 
     async def _load_page(self, page):
         """페이지 로드 및 대기"""
