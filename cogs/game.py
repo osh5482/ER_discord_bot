@@ -86,47 +86,6 @@ class game(commands.Cog):
         print_user_server(interaction)
         await logging_function(self.bot, interaction)
 
-    @app_commands.command(
-        name="ㅍㄴ새로고침",
-        description="패치노트를 즉시 새로 크롤링합니다. (관리자 전용)",
-    )
-    async def refresh_patchnote(self, interaction: discord.Interaction):
-        """패치노트를 즉시 새로고침하는 함수 (관리자 전용)"""
-
-        # 관리자 권한 확인 (필요에 따라 수정)
-        if interaction.user.id != 393987987005767690:  # BOT_OWNER_ID
-            await interaction.response.send_message(
-                "이 명령어는 봇 관리자만 사용할 수 있습니다.", ephemeral=True
-            )
-            return
-
-        await interaction.response.defer(ephemeral=True)
-
-        print(f"[{current_time()}] 관리자가 패치노트 새로고침을 요청했습니다.")
-
-        try:
-            success = await save_patch_notes_to_db()
-
-            if success:
-                await interaction.followup.send(
-                    "✅ 패치노트가 성공적으로 새로고침되었습니다.", ephemeral=True
-                )
-                print(f"[{current_time()}] 패치노트 수동 새로고침 완료")
-            else:
-                await interaction.followup.send(
-                    "❌ 패치노트 새로고침에 실패했습니다.", ephemeral=True
-                )
-                print(f"[{current_time()}] 패치노트 수동 새로고침 실패")
-
-        except Exception as e:
-            await interaction.followup.send(
-                f"❌ 패치노트 새로고침 중 오류가 발생했습니다: {e}", ephemeral=True
-            )
-            print(f"[{current_time()}] 패치노트 수동 새로고침 오류: {e}")
-
-        print_user_server(interaction)
-        await logging_function(self.bot, interaction)
-
     @app_commands.command(name="ㄷㅈ", description="현재 스팀 동접자 수를 확인합니다.")
     async def get_in_game_user(self, interaction: discord.Interaction):
         """동접 확인 함수"""
