@@ -26,7 +26,23 @@ async def on_ready():
     print(f"[{current_time()}] Logged in as {bot.user}")
     bot.owner_id = 393987987005767690
     bot.log_channel = bot.get_channel(1227163092719374366)
-    await bot.tree.sync()
+    try:
+        # 개발 중이라면 특정 길드에만 동기화 (빠름)
+        # GUILD_ID = 1156212577202872351  # 테스트 서버 ID
+        # synced = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        # print(f"[{current_time()}] Synced {len(synced)} commands to guild {GUILD_ID}")
+
+        # 전역 동기화 (모든 서버에 적용, 최대 1시간 소요)
+        synced = await bot.tree.sync()
+        print(f"[{current_time()}] Synced {len(synced)} commands globally")
+
+        # 현재 등록된 명령어 목록 출력
+        commands_list = [cmd.name for cmd in bot.tree.get_commands()]
+        print(f"[{current_time()}] Registered commands: {commands_list}")
+
+    except Exception as e:
+        print(f"[{current_time()}] Failed to sync commands: {e}")
+
     await bot.change_presence(
         activity=discord.Game(name=f"눈젖빵 {len(bot.guilds)}개째 제작")
     )
@@ -67,8 +83,8 @@ async def on_guild_remove(guild):
 
 async def main():
     """봇 실행 메인 함수"""
-    await load_extensions()
     load_dotenv(verbose=True)
+    await load_extensions()
     BREAD_TOKEN = os.getenv("BREAD_TOKEN")
     INFERIORITY_TOKEN = os.getenv("INFERIORITY_TOKEN")
     await bot.start(BREAD_TOKEN)
