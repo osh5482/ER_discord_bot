@@ -7,7 +7,7 @@ from functions.utill import *
 
 
 intents = discord.Intents.default()
-# intents.message_content = True
+intents.message_content = True
 # intents.guilds = True
 bot = commands.Bot(command_prefix="?", intents=intents)
 
@@ -87,7 +87,7 @@ async def main():
     await load_extensions()
     BREAD_TOKEN = os.getenv("BREAD_TOKEN")
     INFERIORITY_TOKEN = os.getenv("INFERIORITY_TOKEN")
-    await bot.start(BREAD_TOKEN)
+    await bot.start(INFERIORITY_TOKEN)
 
 
 if __name__ == "__main__":

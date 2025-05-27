@@ -1,9 +1,10 @@
 import aiohttp
 import discord
+import time  # 성능 측정을 위해 추가
 from discord.ext import commands
 from discord import app_commands
 import functions.ER_API as ER
-import functions.ER_statistics as gg
+from functions.crawler import StatisticsCrawler  # 변경된 import
 from functions.dict_lib import char_english, weapon_english, char_weapons
 from functions.utill import *
 from functions.manageDB import *
@@ -268,42 +269,27 @@ class game(commands.Cog):
         self, interaction: discord.Interaction, weapon: str, character: str
     ):
         try:
+            # 로딩 메시지 표시
+            await interaction.response.defer()
+
             weapon_E = weapon_english[f"{weapon}"]
             character_E = char_english[f"{character}"]
-            s_dict = await gg.dakgg_crawler(weapon_E, character_E)
-            # print(s_dict)
 
-            embed = discord.Embed(
-                title=f"{weapon} {character}",
-                color=0x00FF00,
-                url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
+            # 기본 다이아+ 통계 가져오기
+            async with StatisticsCrawler() as crawler:
+                s_dict = await crawler.dakgg_crawler(weapon_E, character_E)
+
+            # 초기 임베드 생성
+            embed, file = await self._create_statistics_embed(
+                s_dict, weapon, character, weapon_E, character_E, "다이아몬드+"
             )
 
-            pick_percent = s_dict["픽률"]["value"]
-            win_percent = s_dict["승률"]["value"]
-            get_RP = s_dict["RP 획득"]["value"]
-            pick_rank = s_dict["픽률"]["ranking"]
-            win_rank = s_dict["승률"]["ranking"]
-            get_RP_rank = s_dict["RP 획득"]["ranking"]
+            # 티어 선택 드롭다운 뷰 생성
+            view = TierSelectionView(
+                weapon, character, weapon_E, character_E, s_dict["code"]
+            )
 
-            embed.add_field(
-                name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True
-            )
-            embed.add_field(
-                name="승률", value=f"{win_percent}\n{win_rank}", inline=True
-            )
-            embed.add_field(
-                name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
-            )
-            embed.set_footer(text="가장 최근 패치의 다이아+ 7일 통계입니다")
-
-            code = s_dict["code"]
-            file = discord.File(
-                f"./image/char_profile/{code}_{character_E}.png", filename="profile.png"
-            )
-            embed.set_thumbnail(url="attachment://profile.png")
-
-            await interaction.response.send_message(file=file, embed=embed)
+            await interaction.followup.send(file=file, embed=embed, view=view)
             print(
                 f"[{current_time()}] Success get character statistics {weapon} {character}"
             )
@@ -311,8 +297,208 @@ class game(commands.Cog):
             await logging_function(self.bot, interaction)
         except Exception as e:
             print("failed making embed: ", e)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "통계를 가져오는 데 실패했습니다.", ephemeral=True
+            )
+
+    async def _create_statistics_embed(
+        self, s_dict, weapon, character, weapon_E, character_E, tier="다이아몬드+"
+    ):
+        """통계 임베드를 생성하는 헬퍼 함수"""
+        embed = discord.Embed(
+            title=f"{weapon} {character}",
+            color=0x00FF00,
+            url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
+        )
+
+        pick_percent = s_dict.get("픽률", {}).get("value", "N/A")
+        win_percent = s_dict.get("승률", {}).get("value", "N/A")
+        get_RP = s_dict.get("RP 획득", {}).get("value", "N/A")
+        pick_rank = s_dict.get("픽률", {}).get("ranking", "N/A")
+        win_rank = s_dict.get("승률", {}).get("ranking", "N/A")
+        get_RP_rank = s_dict.get("RP 획득", {}).get("ranking", "N/A")
+
+        embed.add_field(name="픽률", value=f"{pick_percent}\n#{pick_rank}", inline=True)
+        embed.add_field(name="승률", value=f"{win_percent}\n#{win_rank}", inline=True)
+        embed.add_field(
+            name="RP획득", value=f"{get_RP} RP\n#{get_RP_rank}", inline=True
+        )
+
+        # 티어에 따른 푸터 텍스트 설정
+        embed.set_footer(text=f"가장 최근 패치의 {tier} 7일 통계입니다")
+
+        code = s_dict["code"]
+        file = discord.File(
+            f"./image/char_profile/{code}_{character_E}.png", filename="profile.png"
+        )
+        embed.set_thumbnail(url="attachment://profile.png")
+
+        return embed, file
+
+
+class TierSelectionView(discord.ui.View):
+    """티어 선택 드롭다운을 포함하는 뷰"""
+
+    def __init__(self, weapon, character, weapon_E, character_E, char_code):
+        super().__init__(timeout=300)  # 5분 후 타임아웃
+        self.weapon = weapon
+        self.character = character
+        self.weapon_E = weapon_E
+        self.character_E = character_E
+        self.char_code = char_code
+
+        # 드롭다운 메뉴 추가
+        self.add_item(TierDropdown(weapon, character, weapon_E, character_E, char_code))
+
+    async def on_timeout(self):
+        """타임아웃 시 버튼 비활성화"""
+        for item in self.children:
+            item.disabled = True
+
+
+class TierDropdown(discord.ui.Select):
+    """티어 선택 드롭다운 메뉴"""
+
+    def __init__(self, weapon, character, weapon_E, character_E, char_code):
+        self.weapon = weapon
+        self.character = character
+        self.weapon_E = weapon_E
+        self.character_E = character_E
+        self.char_code = char_code
+
+        # 티어 옵션 정의 (이모지 제거)
+        tier_options = [
+            discord.SelectOption(
+                label="In 1000", description="상위 1000명 통계", value="In 1000"
+            ),
+            discord.SelectOption(
+                label="미스릴+", description="미스릴 이상 통계", value="미스릴+"
+            ),
+            discord.SelectOption(
+                label="메테오라이트+",
+                description="메테오라이트 이상 통계",
+                value="메테오라이트+",
+            ),
+            discord.SelectOption(
+                label="다이아몬드+",
+                description="다이아몬드 이상 통계",
+                value="다이아몬드+",
+                default=True,  # 기본 선택
+            ),
+            discord.SelectOption(
+                label="플래티넘+", description="플래티넘 이상 통계", value="플래티넘+"
+            ),
+            discord.SelectOption(
+                label="플래티넘", description="플래티넘 통계", value="플래티넘"
+            ),
+            discord.SelectOption(label="골드", description="골드 통계", value="골드"),
+            discord.SelectOption(label="실버", description="실버 통계", value="실버"),
+            discord.SelectOption(
+                label="브론즈", description="브론즈 통계", value="브론즈"
+            ),
+            discord.SelectOption(
+                label="아이언", description="아이언 통계", value="아이언"
+            ),
+        ]
+
+        super().__init__(
+            placeholder="다른 티어의 통계를 보려면 선택하세요...",
+            min_values=1,
+            max_values=1,
+            options=tier_options,
+        )
+
+    async def callback(self, interaction: discord.Interaction):
+        """드롭다운 선택 시 호출되는 콜백 (최적화된 버전)"""
+        try:
+            selected_tier = self.values[0]
+
+            # 즉시 응답으로 로딩 상태 표시 (이미지 없이)
+            loading_embed = discord.Embed(
+                title=f"🔄 {self.weapon} {self.character}",
+                description=f"**{selected_tier}** 티어 통계를 불러오는 중...",
+                color=0xFFFF00,  # 노란색으로 로딩 상태 표시
+            )
+
+            await interaction.response.edit_message(
+                embed=loading_embed,
+                attachments=[],  # 기존 이미지 제거
+                view=None,  # 로딩 중에는 드롭다운 숨김
+            )
+
+            start_time = time.time()
+
+            # 선택된 티어의 통계 가져오기
+            async with StatisticsCrawler() as crawler:
+                s_dict = await crawler.scrape_tier_statistics(
+                    self.weapon_E, self.character_E, selected_tier
+                )
+
+            load_time = time.time() - start_time
+            print(f"🏁 총 로딩 시간: {load_time:.2f}초")
+
+            # 새로운 임베드 생성
+            from cogs.game import game
+
+            game_cog = game(interaction.client)
+            embed, file = await game_cog._create_statistics_embed(
+                s_dict,
+                self.weapon,
+                self.character,
+                self.weapon_E,
+                self.character_E,
+                selected_tier,
+            )
+
+            # 드롭다운의 기본 선택값 업데이트
+            for option in self.options:
+                option.default = option.value == selected_tier
+
+            # 새로운 뷰 생성 (기존 뷰 유지하되 선택값만 업데이트)
+            new_view = TierSelectionView(
+                self.weapon,
+                self.character,
+                self.weapon_E,
+                self.character_E,
+                self.char_code,
+            )
+
+            # 새 드롭다운의 선택값 업데이트
+            for option in new_view.children[0].options:
+                option.default = option.value == selected_tier
+
+            # 메시지 업데이트 (완료된 임베드와 이미지로 교체)
+            await interaction.edit_original_response(
+                embed=embed, attachments=[file], view=new_view
+            )
+
+            print(
+                f"[{current_time()}] Tier statistics updated: {self.weapon} {self.character} - {selected_tier} ({load_time:.2f}s)"
+            )
+
+        except Exception as e:
+            print(f"❌ 티어 통계 업데이트 실패: {e}")
+
+            # 에러 상태 표시 (이미지 없이)
+            error_embed = discord.Embed(
+                title=f"❌ {self.weapon} {self.character}",
+                description=f"**{selected_tier}** 티어 통계를 가져오는데 실패했습니다.\n잠시 후 다시 시도해주세요.",
+                color=0xFF0000,  # 빨간색으로 에러 상태 표시
+            )
+
+            # 원본 뷰로 복원
+            original_view = TierSelectionView(
+                self.weapon,
+                self.character,
+                self.weapon_E,
+                self.character_E,
+                self.char_code,
+            )
+
+            await interaction.edit_original_response(
+                embed=error_embed,
+                attachments=[],  # 에러 시에도 이미지 제거
+                view=original_view,
             )
 
 
