@@ -295,7 +295,7 @@ class game(commands.Cog):
             embed.add_field(
                 name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
             )
-            embed.set_footer(text="가장 최근 패치의 다이아+ 3일 통계입니다")
+            embed.set_footer(text="가장 최근 패치의 다이아+ 7일 통계입니다")
 
             code = s_dict["code"]
             file = discord.File(
