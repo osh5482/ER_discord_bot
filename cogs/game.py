@@ -279,7 +279,7 @@ class game(commands.Cog):
             async with StatisticsCrawler() as crawler:
                 s_dict = await crawler.dakgg_crawler(weapon_E, character_E)
 
-            # 초기 임베드 생성
+            # 초기 임베드 생성 (기본 티어: 다이아몬드+)
             embed, file = await self._create_statistics_embed(
                 s_dict, weapon, character, weapon_E, character_E, "다이아몬드+"
             )
@@ -305,10 +305,32 @@ class game(commands.Cog):
         self, s_dict, weapon, character, weapon_E, character_E, tier="다이아몬드+"
     ):
         """통계 임베드를 생성하는 헬퍼 함수"""
+
+        # 티어별 URL 파라미터 매핑
+        tier_url_mapping = {
+            "In 1000": "in1000",
+            "미스릴+": "mithril_plus",
+            "메테오라이트+": "meteorite_plus",
+            "다이아몬드+": "diamond_plus",
+            "플래티넘+": "platinum_plus",
+            "플래티넘": "platinum",
+            "골드": "gold",
+            "실버": "silver",
+            "브론즈": "bronze",
+            "아이언": "iron",
+        }
+
+        # 기본 URL
+        base_url = f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}"
+
+        # 티어 파라미터 추가
+        tier_param = tier_url_mapping.get(tier, "diamond_plus")
+        full_url = f"{base_url}&tier={tier_param}"
+
         embed = discord.Embed(
             title=f"{weapon} {character}",
             color=0x00FF00,
-            url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
+            url=full_url,
         )
 
         pick_percent = s_dict.get("픽률", {}).get("value", "N/A")
@@ -437,7 +459,7 @@ class TierDropdown(discord.ui.Select):
             load_time = time.time() - start_time
             print(f"🏁 총 로딩 시간: {load_time:.2f}초")
 
-            # 새로운 임베드 생성
+            # 새로운 임베드 생성 (선택된 티어로)
             from cogs.game import game
 
             game_cog = game(interaction.client)
@@ -447,7 +469,7 @@ class TierDropdown(discord.ui.Select):
                 self.character,
                 self.weapon_E,
                 self.character_E,
-                selected_tier,
+                selected_tier,  # 선택된 티어 전달
             )
 
             # 드롭다운의 기본 선택값 업데이트
