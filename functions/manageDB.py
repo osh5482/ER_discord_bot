@@ -166,7 +166,7 @@ async def get_data():
 async def save_patch_notes_to_db():
     """패치노트를 크롤링해서 DB에 저장하는 함수"""
     try:
-        from functions.patch_crawler import PatchNoteCrawler
+        from functions.crawler import PatchNoteCrawler
 
         print("패치노트 크롤링을 시작합니다...")
         # 크롤러를 직접 호출하여 패치 정보 수집
