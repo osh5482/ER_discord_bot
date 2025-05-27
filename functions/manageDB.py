@@ -109,9 +109,6 @@ def get_latest_patch_data(c):
     return None
 
 
-# 캐싱 관련 함수 제거
-
-
 def insert_data(c, current_time, now, currentPlayer):
     """데이터 저장 함수"""
     c.execute(
@@ -169,10 +166,12 @@ async def get_data():
 async def save_patch_notes_to_db():
     """패치노트를 크롤링해서 DB에 저장하는 함수"""
     try:
-        from functions.ER_API import get_patchnote
+        from functions.patch_crawler import PatchNoteCrawler
 
         print("패치노트 크롤링을 시작합니다...")
-        patch_info = await get_patchnote()
+        # 크롤러를 직접 호출하여 패치 정보 수집
+        async with PatchNoteCrawler() as crawler:
+            patch_info = await crawler.get_patch_info()
 
         if patch_info:
             conn, c = connect_DB()

@@ -237,17 +237,3 @@ class PatchNoteCrawler:
         except Exception:
             pass
         return None
-
-
-# 캐싱 시스템
-_patch_cache = {"data": None, "timestamp": 0, "cache_duration": 300}  # 5분 캐시
-
-
-async def get_patch_info():
-    """패치노트 정보 반환"""
-    # 새로운 크롤링 실행
-    print("🔄 새로운 패치노트 정보 크롤링...")
-    async with PatchNoteCrawler() as crawler:
-        patch_info = await crawler.get_patch_info()
-
-        return patch_info
