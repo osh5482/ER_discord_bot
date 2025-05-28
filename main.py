@@ -91,8 +91,8 @@ async def main():
     Config.validate()
 
     await load_extensions()
-    # await bot.start(Config.BREAD_TOKEN)
-    await bot.start(Config.INFERIORITY_TOKEN)
+    await bot.start(Config.BREAD_TOKEN)
+    # await bot.start(Config.INFERIORITY_TOKEN)
 
 
 if __name__ == "__main__":

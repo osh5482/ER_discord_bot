@@ -11,16 +11,27 @@ from config import Config
 
 
 class PatchNoteSelectView(discord.ui.View):
-    """패치노트 버전 선택을 위한 드롭다운 메뉴 뷰"""
+    """패치노트 버전 선택을 위한 드롭다운 메뉴 뷰 - 페이지네이션 지원"""
 
-    def __init__(self, all_patches, current_patch_info):
+    def __init__(self, all_patches, current_patch_info, page=0):
         super().__init__(timeout=300)  # 5분 타임아웃
         self.all_patches = all_patches
         self.current_patch_info = current_patch_info
+        self.page = page
+        self.items_per_page = 23  # 네비게이션 버튼을 위해 2개 여유 공간 확보
 
-        # 드롭다운 메뉴 옵션 생성 (최신순으로 최대 25개)
+        # 페이지 계산
+        self.total_pages = (
+            len(all_patches) + self.items_per_page - 1
+        ) // self.items_per_page
+        start_idx = page * self.items_per_page
+        end_idx = min(start_idx + self.items_per_page, len(all_patches))
+        current_page_patches = all_patches[start_idx:end_idx]
+
+        # 드롭다운 메뉴 옵션 생성
         options = []
-        for i, patch in enumerate(all_patches[:25]):  # Discord 드롭다운 최대 25개 제한
+        for i, patch in enumerate(current_page_patches):
+            global_idx = start_idx + i  # 전체 리스트에서의 인덱스
             # 현재 선택된 패치인지 확인
             is_current = (
                 patch["major_version"] == current_patch_info["major_patch_version"]
@@ -28,7 +39,7 @@ class PatchNoteSelectView(discord.ui.View):
 
             # 라벨 생성 (최신 버전인지 확인)
             label = f"버전 {patch['major_version']}"
-            if i == 0:  # 가장 최신 버전
+            if global_idx == 0:  # 가장 최신 버전
                 label += " (최신)"
 
             options.append(
@@ -46,8 +57,87 @@ class PatchNoteSelectView(discord.ui.View):
             self.select_menu = PatchVersionSelect(options, self.all_patches)
             self.add_item(self.select_menu)
 
+        # 페이지네이션 버튼 추가 (2페이지 이상일 때만)
+        if self.total_pages > 1:
+            # 이전 페이지 버튼
+            prev_button = discord.ui.Button(
+                label="◀ 이전",
+                style=discord.ButtonStyle.secondary,
+                disabled=(page == 0),
+                row=1,
+            )
+            prev_button.callback = self.previous_page
+            self.add_item(prev_button)
+
+            # 페이지 정보 버튼 (비활성화)
+            page_info_button = discord.ui.Button(
+                label=f"{page + 1}/{self.total_pages}",
+                style=discord.ButtonStyle.secondary,
+                disabled=True,
+                row=1,
+            )
+            self.add_item(page_info_button)
+
+            # 다음 페이지 버튼
+            next_button = discord.ui.Button(
+                label="다음 ▶",
+                style=discord.ButtonStyle.secondary,
+                disabled=(page >= self.total_pages - 1),
+                row=1,
+            )
+            next_button.callback = self.next_page
+            self.add_item(next_button)
+
+    async def previous_page(self, interaction: discord.Interaction):
+        """이전 페이지로 이동"""
+        if self.page > 0:
+            new_page = self.page - 1
+            new_view = PatchNoteSelectView(
+                self.all_patches, self.current_patch_info, new_page
+            )
+
+            # 현재 선택된 패치의 임베드 유지
+            current_patch = None
+            for patch in self.all_patches:
+                if (
+                    patch["major_version"]
+                    == self.current_patch_info["major_patch_version"]
+                ):
+                    current_patch = patch
+                    break
+
+            if current_patch:
+                embed = create_patch_embed(current_patch)
+                await interaction.response.edit_message(embed=embed, view=new_view)
+            else:
+                await interaction.response.edit_message(view=new_view)
+
+    async def next_page(self, interaction: discord.Interaction):
+        """다음 페이지로 이동"""
+        if self.page < self.total_pages - 1:
+            new_page = self.page + 1
+            new_view = PatchNoteSelectView(
+                self.all_patches, self.current_patch_info, new_page
+            )
+
+            # 현재 선택된 패치의 임베드 유지
+            current_patch = None
+            for patch in self.all_patches:
+                if (
+                    patch["major_version"]
+                    == self.current_patch_info["major_patch_version"]
+                ):
+                    current_patch = patch
+                    break
+
+            if current_patch:
+                embed = create_patch_embed(current_patch)
+                await interaction.response.edit_message(embed=embed, view=new_view)
+            else:
+                await interaction.response.edit_message(view=new_view)
+
     async def on_timeout(self):
-        """타임아웃 시 드롭다운 메뉴 비활성화"""
+        """타임아웃 시 모든 컴포넌트 비활성화"""
         for item in self.children:
             item.disabled = True
 
@@ -90,9 +180,18 @@ class PatchVersionSelect(discord.ui.Select):
         for i, option in enumerate(self.options):
             option.default = option.value == selected_version
 
-        # 새로운 뷰 생성 (업데이트된 기본값 반영)
+        # 새로운 뷰 생성 (업데이트된 기본값 반영) - 현재 페이지 유지
+        current_page = 0
+        # 선택된 버전이 몇 페이지에 있는지 찾기
+        for i, patch in enumerate(self.all_patches):
+            if patch["major_version"] == selected_version:
+                current_page = i // 23  # items_per_page와 동일
+                break
+
         new_view = PatchNoteSelectView(
-            self.all_patches, {"major_patch_version": selected_patch["major_version"]}
+            self.all_patches,
+            {"major_patch_version": selected_patch["major_version"]},
+            current_page,
         )
 
         await interaction.response.edit_message(embed=embed, view=new_view)
@@ -107,7 +206,7 @@ def create_patch_embed(patch_info):
     last_updated = patch_info.get("last_updated", "")
 
     # Discord Embed 생성
-    embed = discord.Embed(title=f"🔧 패치노트 - v{major_version}", color=0x00FF00)
+    embed = discord.Embed(title=f"🔧 패치노트 - {major_version}", color=0x00FF00)
 
     # 메이저 패치 정보 (날짜를 필드명에 포함)
     if major_patches:
@@ -321,8 +420,17 @@ class game_info(commands.Cog):
         # 드롭다운 메뉴 뷰 생성 (2개 이상의 패치가 있을 때만)
         view = None
         if len(all_patches) > 1:
+            # 현재 선택된 패치가 몇 페이지에 있는지 계산
+            current_page = 0
+            for i, patch in enumerate(all_patches):
+                if patch["major_version"] == latest_patch["major_version"]:
+                    current_page = i // 23  # items_per_page와 동일
+                    break
+
             view = PatchNoteSelectView(
-                all_patches, {"major_patch_version": latest_patch["major_version"]}
+                all_patches,
+                {"major_patch_version": latest_patch["major_version"]},
+                current_page,
             )
 
         await interaction.followup.send(embed=embed, view=view)
