@@ -327,8 +327,8 @@ class game_info(commands.Cog):
     async def get_recent_major_patchnote(self, interaction: discord.Interaction):
         """제일 최근 메이저패치와 마이너패치 가져오는 함수 (DB에서 조회) - 드롭다운 메뉴 지원"""
 
-        # 로딩 메시지 표시
-        await interaction.response.defer()
+        # 로딩 메시지 표시 (ephemeral로 설정)
+        await interaction.response.defer(ephemeral=True)
 
         # DB에서 모든 패치노트 정보 조회
         try:
