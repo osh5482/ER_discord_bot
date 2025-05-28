@@ -37,7 +37,7 @@ async def not_my_fault(ctx):
         description=f"Api 네트워크 오류",
         color=0x00FF00,
     )
-    file_path = f"./image/icon/not_mt_fault.png"
+    file_path = f"./assets/images/icons/not_my_fault.png"
     embed.set_thumbnail(url="attachment://Error.png")
     file = discord.File(file_path, filename="Error.png")
     await ctx.channel.send(file=file, embed=embed)
@@ -51,7 +51,9 @@ def print_user_server(interaction: discord.Interaction):
 
 async def logging_function(bot, interaction: discord.Interaction):
     """명령어 아니어도 로그 남기는 함수"""
-    log_channel = bot.get_channel(1227163092719374366)
+    from config import Config
+
+    log_channel = bot.get_channel(Config.LOG_CHANNEL_ID)
     function_name = inspect.stack()[1].function  # 호출한 함수의 이름을 자동으로 가져옴
 
     await log_channel.send(

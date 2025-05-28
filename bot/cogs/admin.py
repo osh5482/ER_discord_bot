@@ -3,18 +3,19 @@ import os
 import discord
 from discord.ext import commands
 from discord import app_commands
-from functions.manageDB import save_patch_notes_to_db
-from functions.utill import current_time, print_user_server, logging_function
+from database.connection import save_patch_notes_to_db
+from utils.helpers import current_time, print_user_server, logging_function
+from config import Config
 
-BOT_OWNER_ID = 393987987005767690
-SPECIFIC_SERVER_ID = 1156212577202872351
+BOT_OWNER_ID = Config.BOT_OWNER_ID
+SPECIFIC_SERVER_ID = Config.SPECIFIC_SERVER_ID
 
 
 def is_owner(interaction: discord.Interaction):
     return interaction.user.id == BOT_OWNER_ID
 
 
-class bot_manage(commands.Cog):
+class admin(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -44,7 +45,7 @@ class bot_manage(commands.Cog):
         """패치노트를 즉시 새로고침하는 함수 (관리자 전용)"""
 
         # 관리자 권한 확인 (필요에 따라 수정)
-        if interaction.user.id != 393987987005767690:  # BOT_OWNER_ID
+        if interaction.user.id != BOT_OWNER_ID:
             await interaction.response.send_message(
                 "이 명령어는 봇 관리자만 사용할 수 있습니다.", ephemeral=True
             )
@@ -157,7 +158,7 @@ class bot_manage(commands.Cog):
 class ManageView(discord.ui.View):
     """Custom view that displays the management buttons."""
 
-    def __init__(self, cog: bot_manage):
+    def __init__(self, cog: admin):
         super().__init__(timeout=None)
         self.cog = cog
 
@@ -205,4 +206,4 @@ class ManageView(discord.ui.View):
 
 
 async def setup(bot):
-    await bot.add_cog(bot_manage(bot))
+    await bot.add_cog(admin(bot))

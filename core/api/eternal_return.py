@@ -6,23 +6,18 @@ import aiohttp
 import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime
-from dotenv import load_dotenv
+from config import Config
 
-from functions.dict_lib import *
+from utils.constants import *
 
 # from dict_lib import *
-
-
-load_dotenv(verbose=True)
-ER_key = os.getenv("ER")
-steam_key = os.getenv("steam")
 
 
 async def get_current_player_api() -> int:
     """스팀 api로 이리 동접 가져오는 함수
     반환값 : int(동접자수) / 에러시 None"""
     url = "https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?&appid=1049590"
-    headers = {"x-api-key": steam_key}
+    headers = {"x-api-key": Config.STEAM_API_KEY}
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as response:
@@ -43,7 +38,7 @@ async def add_header(url: str) -> dict:
     반환값 : dict(파이썬 객체) /
     에러시 aiohttp.ClientResponseError
     """
-    headers = {"x-api-key": ER_key}
+    headers = {"x-api-key": Config.ER_API_KEY}
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers) as response:
             if response.status == 200:
@@ -347,7 +342,7 @@ async def get_iternity_rating() -> int:
 
 async def get_patchnote() -> dict:
     """최적화된 패치노트 정보 가져오기 함수"""
-    from functions.patch_crawler import get_patch_info
+    from core.crawlers.patch_notes import get_patch_info
 
     return await get_patch_info()
 

@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
-from functions.utill import *
+from utils.helpers import *
 
 
-class easter_egg(commands.Cog):
+class events(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.func_name = None
@@ -49,7 +49,7 @@ class easter_egg(commands.Cog):
 
         self.func_name = "easter_egg"
         if await check_cooldown(self.func_name, self.cooldown_time):
-            with open("./image/damn_it_markus.png", "rb") as f:
+            with open("./assets/images/misc/damn_it_markus.png", "rb") as f:
                 image = discord.File(f)
             await mesaage.reply(file=image)
             print(f"[{current_time()}] 젠장 마커스 난 네가 좋다")
@@ -66,7 +66,7 @@ class easter_egg(commands.Cog):
 
         self.func_name = "easter_egg"
         if await check_cooldown(self.func_name, self.cooldown_time):
-            with open("./image/ER_forever.jpg", "rb") as f:
+            with open("./assets/images/misc/ER_forever.jpg", "rb") as f:
                 image = discord.File(f)
             await message.reply(file=image)
             print(f"[{current_time()}] 지옥끝까지 함께하겠다 이터널리턴!!!!")
@@ -83,7 +83,7 @@ class easter_egg(commands.Cog):
 
         self.func_name = "bianca_avg"
         if await check_cooldown(self.func_name, self.cooldown_time):
-            with open("./image/bianca_avg.jpg", "rb") as f:
+            with open("./assets/images/misc/bianca_avg.jpg", "rb") as f:
                 image = discord.File(f)
             await message.reply(file=image)
             print(f"[{current_time()}] 앙평ㅋㅋㅋㅋ")
@@ -115,4 +115,4 @@ class easter_egg(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(easter_egg(bot))
+    await bot.add_cog(events(bot))

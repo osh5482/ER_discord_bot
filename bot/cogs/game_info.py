@@ -2,14 +2,15 @@ import aiohttp
 import discord
 from discord.ext import commands
 from discord import app_commands
-import functions.ER_API as ER
-import functions.ER_statistics as gg
-from functions.dict_lib import char_english, weapon_english, char_weapons
-from functions.utill import *
-from functions.manageDB import *
+import core.api.eternal_return as ER
+import core.crawlers.statistics as gg
+from utils.constants import char_english, weapon_english, char_weapons
+from utils.helpers import *
+from database.connection import *
+from config import Config
 
 
-class game(commands.Cog):
+class game_info(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -125,7 +126,9 @@ class game(commands.Cog):
         )
 
         embed.add_field(name="24h 최고 동접", value=f"{most_24h} 명", inline=False)
-        file = discord.File(f"./image/icon/{icon}.png", filename="leniticon.png")
+        file = discord.File(
+            f"./assets/images/icons/{icon}.png", filename="leniticon.png"
+        )
         embed.set_thumbnail(url="attachment://leniticon.png")
         await interaction.response.send_message(file=file, embed=embed)
 
@@ -249,7 +252,7 @@ class game(commands.Cog):
             embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
             embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
 
-        file_path = f"./image/char_profile/{code}_{char_name}.png"
+        file_path = f"./assets/images/characters/{code}_{char_name}.png"
         embed.set_thumbnail(url=f"attachment://{char_name}.png")
         file = discord.File(file_path, filename=f"{char_name}.png")
         files_and_embeds.append((embed, file))
@@ -299,7 +302,8 @@ class game(commands.Cog):
 
             code = s_dict["code"]
             file = discord.File(
-                f"./image/char_profile/{code}_{character_E}.png", filename="profile.png"
+                f"./assets/images/characters/{code}_{character_E}.png",
+                filename="profile.png",
             )
             embed.set_thumbnail(url="attachment://profile.png")
 
@@ -317,4 +321,4 @@ class game(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(game(bot))
+    await bot.add_cog(game_info(bot))

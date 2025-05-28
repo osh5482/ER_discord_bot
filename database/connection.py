@@ -4,11 +4,12 @@ import time
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import json
+from config import Config
 
 
 def connect_DB():
     """데이터베이스 연결 함수"""
-    conn = sqlite3.connect("data.db", isolation_level=None)
+    conn = sqlite3.connect(Config.DATABASE_PATH, isolation_level=None)
     c = conn.cursor()
     return conn, c
 
@@ -169,7 +170,7 @@ async def get_data():
 async def save_patch_notes_to_db():
     """패치노트를 크롤링해서 DB에 저장하는 함수"""
     try:
-        from functions.ER_API import get_patchnote
+        from core.api.eternal_return import get_patchnote
 
         print("패치노트 크롤링을 시작합니다...")
         patch_info = await get_patchnote()
