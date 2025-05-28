@@ -54,13 +54,14 @@ def create_patch_table(c):
 
 
 def insert_patch_data(c, patch_info):
-    """패치노트 데이터 저장 함수 - 새로운 구조에 맞게 수정"""
+    """패치노트 데이터 저장 함수 - 제목 정보 포함"""
     current_unix_time = int(time.time())
     current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     major_version = patch_info.get("major_patch_version")
     major_date = patch_info.get("major_patch_date")
     major_url = patch_info.get("major_patch_url")
+    major_title = patch_info.get("major_patch_title")  # 패치노트 제목 추가
     minor_patch_data = patch_info.get("minor_patch_data", [])
 
     if not major_version:
@@ -73,7 +74,9 @@ def insert_patch_data(c, patch_info):
             {
                 "version": major_version,
                 "url": major_url,
-                "title": f"{major_version} PATCH NOTES",
+                "title": (
+                    major_title if major_title else f"{major_version} PATCH NOTES"
+                ),  # 실제 제목 사용
                 "date": major_date or "",
             }
         ]
@@ -107,6 +110,8 @@ def insert_patch_data(c, patch_info):
         print(
             f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})"
         )
+        if major_title:
+            print(f"  제목: {major_title}")
     else:
         # 새로운 버전이면 삽입
         c.execute(
@@ -125,6 +130,8 @@ def insert_patch_data(c, patch_info):
         print(
             f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})"
         )
+        if major_title:
+            print(f"  제목: {major_title}")
 
 
 def get_latest_patch_data(c):

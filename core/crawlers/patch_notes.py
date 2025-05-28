@@ -48,6 +48,7 @@ class PatchNoteCrawler:
             "major_patch_version": None,
             "major_patch_date": None,
             "major_patch_url": None,
+            "major_patch_title": None,  # 패치노트 제목 추가
             "minor_patch_data": [],
         }
 
@@ -66,19 +67,22 @@ class PatchNoteCrawler:
             await self._load_page(page)
 
             # 메이저 패치 정보 추출
-            major_version, major_date, major_url = await self._extract_major_patch(page)
+            major_version, major_date, major_url, major_title = (
+                await self._extract_major_patch(page)
+            )
             crawling_results.update(
                 {
                     "major_patch_version": major_version,
                     "major_patch_date": major_date,
                     "major_patch_url": major_url,
+                    "major_patch_title": major_title,  # 제목 정보 추가
                 }
             )
 
             # 메이저 패치를 찾았다면 마이너 패치도 검색
             if major_version and major_url:
                 minor_data = await self._extract_minor_patches(
-                    page, major_version, major_url
+                    page, major_version, major_url, major_title
                 )
                 crawling_results["minor_patch_data"] = minor_data
 
@@ -139,7 +143,7 @@ class PatchNoteCrawler:
         else:
             print(f"{current_os} 환경: Chromium 브라우저 사용")
             browser = await self._playwright.chromium.launch(
-                headless=False,  # 디버깅을 위해 headless=False로 설정
+                headless=True,
                 args=common_args,
             )
 
@@ -157,18 +161,17 @@ class PatchNoteCrawler:
             # 타임아웃이어도 이미 로드된 콘텐츠로 진행
 
     async def _extract_major_patch(self, page):
-        """최적화된 메이저 패치 추출"""
+        """최적화된 메이저 패치 추출 - 제목 정보 포함"""
         try:
             article_elements = await page.locator("h4.article-title").all()
 
             # 상위 10개만 검색하여 속도 향상
             for title_locator in article_elements[:10]:
                 title_text = await title_locator.text_content()
-                print(f"패치 제목: {title_text}")
 
-                if "패치노트" in title_text:
+                if "PATCH NOTES" in title_text or "패치노트" in title_text:
                     version_match = re.search(
-                        r"(\d+\.\d+)\s*(?:패치노트)",
+                        r"(\d+\.\d+)\s*(?:PATCH NOTES|패치노트)",
                         title_text,
                         re.IGNORECASE,
                     )
@@ -177,21 +180,24 @@ class PatchNoteCrawler:
                     if version_match:
                         version = version_match.group(1)
                         date = date_match.group(1) if date_match else None
+                        # 전체 제목을 저장 (원본 제목 그대로)
+                        patch_title = title_text.strip()
 
                         parent_a = title_locator.locator("xpath=ancestor::a[1]")
                         relative_url = await parent_a.get_attribute("href")
 
                         if relative_url:
                             url = urljoin(self.base_url, relative_url)
-                            print(f"✅ 메이저 패치 발견: {version} - {url}")
-                            return version, date, url
+                            print(f"✅ 메이저 패치 발견: {version} - {patch_title}")
+                            print(f"   URL: {url}")
+                            return version, date, url, patch_title
 
         except Exception as e:
             print(f"메이저 패치 추출 중 오류: {e}")
 
-        return None, None, None
+        return None, None, None, None
 
-    async def _extract_minor_patches(self, page, major_version, major_url):
+    async def _extract_minor_patches(self, page, major_version, major_url, major_title):
         """최적화된 마이너 패치 추출"""
         minor_patches = []
         minor_pattern = re.compile(rf"({re.escape(major_version)}[a-z])", re.IGNORECASE)
@@ -234,7 +240,11 @@ class PatchNoteCrawler:
                 if relative_url:
                     url = urljoin(self.base_url, relative_url)
                     if url != major_url:  # 중복 방지
-                        return {"version": minor_version, "url": url}
+                        return {
+                            "version": minor_version,
+                            "url": url,
+                            "title": title_text.strip(),  # 마이너 패치 제목도 저장
+                        }
         except Exception:
             pass
         return None

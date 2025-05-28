@@ -107,7 +107,7 @@ def create_patch_embed(patch_info):
     last_updated = patch_info.get("last_updated", "")
 
     # Discord Embed 생성
-    embed = discord.Embed(title=f"🔧 패치노트 - {major_version}", color=0x00FF00)
+    embed = discord.Embed(title=f"🔧 패치노트 - v{major_version}", color=0x00FF00)
 
     # 메이저 패치 정보 (날짜를 필드명에 포함)
     if major_patches:
