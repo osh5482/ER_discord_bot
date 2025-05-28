@@ -252,7 +252,7 @@ class AllPatchCrawler:
                 if is_visible and is_enabled:
                     print(f"More 버튼 클릭 중... ({click_count + 1})")
                     await more_button.click()
-                    await asyncio.sleep(0.2)  # 로딩 시간 확보
+                    await asyncio.sleep(1)  # 로딩 시간 확보
                     click_count += 1
                 else:
                     print("더 이상 'More' 버튼이 없거나 비활성화되어 있습니다.")
