@@ -10,6 +10,214 @@ from database.connection import *
 from config import Config
 
 
+class PatchNoteSelectView(discord.ui.View):
+    """패치노트 버전 선택을 위한 드롭다운 메뉴 뷰"""
+
+    def __init__(self, all_patches, current_patch_info):
+        super().__init__(timeout=300)  # 5분 타임아웃
+        self.all_patches = all_patches
+        self.current_patch_info = current_patch_info
+
+        # 드롭다운 메뉴 옵션 생성 (최신순으로 최대 25개)
+        options = []
+        for i, patch in enumerate(all_patches[:25]):  # Discord 드롭다운 최대 25개 제한
+            # 현재 선택된 패치인지 확인
+            is_current = (
+                patch["major_version"] == current_patch_info["major_patch_version"]
+            )
+
+            # 라벨 생성 (최신 버전인지 확인)
+            label = f"버전 {patch['major_version']}"
+            if i == 0:  # 가장 최신 버전
+                label += " (최신)"
+
+            options.append(
+                discord.SelectOption(
+                    label=label,
+                    description=(
+                        patch["major_date"] if patch["major_date"] else "날짜 정보 없음"
+                    ),
+                    value=patch["major_version"],
+                    default=is_current,
+                )
+            )
+
+        if options:
+            self.select_menu = PatchVersionSelect(options, self.all_patches)
+            self.add_item(self.select_menu)
+
+    async def on_timeout(self):
+        """타임아웃 시 드롭다운 메뉴 비활성화"""
+        for item in self.children:
+            item.disabled = True
+
+        # 메시지 편집은 여기서 하지 않음 (interaction이 없어서 에러 발생 가능)
+
+
+class PatchVersionSelect(discord.ui.Select):
+    """패치 버전 선택 드롭다운 메뉴"""
+
+    def __init__(self, options, all_patches):
+        super().__init__(
+            placeholder="다른 패치 버전을 선택하세요...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+        self.all_patches = all_patches
+
+    async def callback(self, interaction: discord.Interaction):
+        """드롭다운 메뉴에서 패치 버전 선택 시 호출"""
+        selected_version = self.values[0]
+
+        # 선택된 버전의 패치 정보 찾기
+        selected_patch = None
+        for patch in self.all_patches:
+            if patch["major_version"] == selected_version:
+                selected_patch = patch
+                break
+
+        if not selected_patch:
+            await interaction.response.send_message(
+                "선택한 패치 버전의 정보를 찾을 수 없습니다.", ephemeral=True
+            )
+            return
+
+        # 새로운 임베드 생성
+        embed = create_patch_embed(selected_patch)
+
+        # 드롭다운 메뉴의 기본 선택값 업데이트
+        for i, option in enumerate(self.options):
+            option.default = option.value == selected_version
+
+        # 새로운 뷰 생성 (업데이트된 기본값 반영)
+        new_view = PatchNoteSelectView(
+            self.all_patches, {"major_patch_version": selected_patch["major_version"]}
+        )
+
+        await interaction.response.edit_message(embed=embed, view=new_view)
+
+
+def create_patch_embed(patch_info):
+    """패치 정보로부터 Discord 임베드 생성"""
+    major_version = patch_info.get("major_version", "알 수 없음")
+    major_date = patch_info.get("major_date", "")
+    major_patches = patch_info.get("major_patches", [])
+    minor_patches = patch_info.get("minor_patches", [])
+    last_updated = patch_info.get("last_updated", "")
+
+    # Discord Embed 생성
+    embed = discord.Embed(title=f"🔧 패치노트 - {major_version}", color=0x00FF00)
+
+    # 메이저 패치 정보 (날짜를 필드명에 포함)
+    if major_patches:
+        # 날짜 정보를 필드명에 추가
+        field_name = f"📋 메이저 패치"
+        if major_date:
+            field_name += f" ({major_date})"
+
+        # 메이저 패치들을 오래된 순으로 정렬하여 제목으로 표시
+        try:
+            sorted_major_patches = sorted(
+                major_patches,
+                key=lambda x: x.get("date", "") if x.get("date") else "",
+                reverse=False,  # 오래된 순으로 정렬
+            )
+        except:
+            sorted_major_patches = major_patches
+
+        major_info = ""
+        for patch in sorted_major_patches:
+            # 제목에서 버전 정보 추출하여 기본값으로 사용
+            title = patch.get("title", "")
+            if not title:
+                title = f"{major_version} PATCH NOTES"
+
+            url = patch.get("url", "")
+
+            if url:
+                if major_info:  # 이미 내용이 있으면 줄바꿈 추가
+                    major_info += "\n"
+                major_info += f"[**{title}**]({url})"
+            else:
+                if major_info:
+                    major_info += "\n"
+                major_info += f"**{title}**"
+
+        if not major_info:  # major_patches가 있지만 내용이 없는 경우
+            major_info = f"**{major_version}**"
+
+        embed.add_field(name=field_name, value=major_info, inline=False)
+    else:
+        # major_patches가 없는 경우
+        field_name = f"📋 메이저 패치"
+        if major_date:
+            field_name += f" ({major_date})"
+
+        major_info = f"**{major_version}**"
+        embed.add_field(name=field_name, value=major_info, inline=False)
+
+    # 마이너 패치 정보
+    if minor_patches:
+        # 마이너 패치를 오래된 순으로 정렬 (날짜 및 알파벳 순)
+        try:
+            sorted_minor_patches = sorted(
+                minor_patches,
+                key=lambda x: (
+                    x.get("date", "") if x.get("date") else "",
+                    x.get("alpha_part", "") if x.get("alpha_part") else "",
+                ),
+                reverse=False,  # 오래된 순으로 변경
+            )
+        except:
+            sorted_minor_patches = minor_patches
+
+        minor_info = ""
+        displayed_count = 0
+        max_display = 15  # 최대 표시할 마이너 패치 수
+
+        for patch in sorted_minor_patches:
+            if displayed_count >= max_display:
+                remaining_count = len(sorted_minor_patches) - displayed_count
+                minor_info += f"\n... 외 {remaining_count}개 더"
+                break
+
+            # 새로운 구조와 기존 구조 모두 지원
+            if isinstance(patch, dict):
+                # 딕셔너리 형태의 패치 정보
+                if "alpha_part" in patch:
+                    # 새로운 구조 (alpha_part 포함)
+                    version = f"{major_version}{patch.get('alpha_part', '')}"
+                    url = patch.get("url", "")
+                else:
+                    # 기존 구조
+                    version = patch.get("version", "")
+                    url = patch.get("url", "")
+
+                if version and url:
+                    minor_info += f"[{version}]({url})  "
+                    displayed_count += 1
+            else:
+                # 기존 구조 지원 (문자열인 경우)
+                minor_info += f"{patch}  "
+                displayed_count += 1
+
+        minor_info = minor_info.strip()
+        embed.add_field(name="🔨 마이너 패치", value=minor_info, inline=False)
+    else:
+        embed.add_field(
+            name="🔨 마이너 패치",
+            value="해당 버전의 마이너 패치가 없습니다.",
+            inline=False,
+        )
+
+    # 마지막 업데이트 시간 추가
+    if last_updated:
+        embed.set_footer(text=f"마지막 업데이트: {last_updated}")
+
+    return embed
+
+
 class game_info(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -18,99 +226,110 @@ class game_info(commands.Cog):
         name="ㅍㄴ", description="제일 최근 메이저패치와 마이너패치 정보를 불러옵니다."
     )
     async def get_recent_major_patchnote(self, interaction: discord.Interaction):
-        """제일 최근 메이저패치와 마이너패치 가져오는 함수 (DB에서 조회) - 새로운 구조 대응"""
+        """제일 최근 메이저패치와 마이너패치 가져오는 함수 (DB에서 조회) - 드롭다운 메뉴 지원"""
 
         # 로딩 메시지 표시
         await interaction.response.defer()
 
-        # DB에서 패치노트 정보 조회
-        patch_info = await get_patch_notes_from_db()
+        # DB에서 모든 패치노트 정보 조회
+        try:
+            conn, c = connect_DB()
+            create_patch_table(c)  # 테이블이 없으면 생성
 
-        if patch_info is None:
+            # 모든 패치 데이터 조회 (버전 순으로 정렬)
+            c.execute(
+                """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
+                   FROM patch_notes 
+                   ORDER BY major_version DESC"""
+            )
+            rows = c.fetchall()
+
+            c.close()
+            conn.close()
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"데이터베이스 조회 중 오류가 발생했습니다: {e}", ephemeral=True
+            )
+            return
+
+        if not rows:
             await interaction.followup.send(
                 "저장된 패치노트 정보가 없습니다. 잠시 후 다시 시도해주세요.",
                 ephemeral=True,
             )
             return
 
-        # 패치 정보 추출
-        major_version = patch_info.get("major_patch_version")
-        major_date = patch_info.get("major_patch_date")
-        major_url = patch_info.get("major_patch_url")
-        minor_patches = patch_info.get("minor_patch_data", [])
-        last_updated = patch_info.get("last_updated")
+        # 버전 정렬을 위한 함수
+        def sort_version_key(version_str):
+            try:
+                parts = version_str.split(".")
+                return tuple(int(part) for part in parts)
+            except (ValueError, AttributeError):
+                return (0, 0)
 
-        if not major_version:
+        # 패치 데이터 처리 및 정렬
+        all_patches = []
+        for row in rows:
+            (
+                major_version,
+                major_date,
+                major_patches_json,
+                minor_patches_json,
+                str_updated_at,
+            ) = row
+
+            # JSON 파싱
+            try:
+                major_patches = (
+                    json.loads(major_patches_json) if major_patches_json else []
+                )
+                minor_patches = (
+                    json.loads(minor_patches_json) if minor_patches_json else []
+                )
+            except json.JSONDecodeError:
+                major_patches = []
+                minor_patches = []
+
+            all_patches.append(
+                {
+                    "major_version": major_version,
+                    "major_date": major_date,
+                    "major_patches": major_patches,
+                    "minor_patches": minor_patches,
+                    "last_updated": str_updated_at,
+                }
+            )
+
+        # 버전별로 정렬 (최신순)
+        all_patches.sort(
+            key=lambda x: sort_version_key(x["major_version"]), reverse=True
+        )
+
+        if not all_patches:
             await interaction.followup.send(
                 "최근 패치노트를 찾을 수 없습니다.", ephemeral=True
             )
             return
 
-        # Discord Embed 생성
-        embed = discord.Embed(title=f"🔧 최신 패치노트", color=0x00FF00)
+        # 최신 패치 정보
+        latest_patch = all_patches[0]
 
-        # 메이저 패치 정보
-        if major_url:
-            major_info = f"**버전:** [**{major_version}**]({major_url})"
-            if major_date:
-                major_info += f"\n**날짜:** {major_date}"
-            embed.add_field(name="📋 메이저 패치", value=major_info, inline=False)
-        else:
-            # major_url이 없는 경우 (새로운 구조에서 major_patches가 빈 경우)
-            major_info = f"**버전:** {major_version}"
-            if major_date:
-                major_info += f"\n**날짜:** {major_date}"
-            embed.add_field(name="📋 메이저 패치", value=major_info, inline=False)
+        # 첫 번째 임베드 생성 (최신 패치)
+        embed = create_patch_embed(latest_patch)
 
-        # 마이너 패치 정보 (병합된 데이터 처리)
-        if minor_patches:
-            # 마이너 패치를 최신순으로 정렬
-            sorted_minor_patches = list(reversed(minor_patches))
-
-            minor_info = ""
-            displayed_count = 0
-            max_display = 10  # 최대 표시할 마이너 패치 수
-
-            for patch in sorted_minor_patches:
-                if displayed_count >= max_display:
-                    remaining_count = len(sorted_minor_patches) - displayed_count
-                    minor_info += f"\n... 외 {remaining_count}개 더"
-                    break
-
-                # 새로운 구조와 기존 구조 모두 지원
-                if isinstance(patch, dict):
-                    version = patch.get("version", "")
-                    url = patch.get("url", "")
-                    if version and url:
-                        if displayed_count == 0:  # 가장 최신 마이너 패치는 굵게
-                            minor_info += f"[**{version}**]({url})  "
-                        else:
-                            minor_info += f"[{version}]({url})  "
-                        displayed_count += 1
-                else:
-                    # 기존 구조 지원 (문자열인 경우)
-                    minor_info += f"{patch}  "
-                    displayed_count += 1
-
-            minor_info = minor_info.strip()
-            embed.add_field(name="🔨 마이너 패치", value=minor_info, inline=False)
-        else:
-            embed.add_field(
-                name="🔨 마이너 패치",
-                value="해당 버전의 마이너 패치가 없습니다.",
-                inline=False,
+        # 드롭다운 메뉴 뷰 생성 (2개 이상의 패치가 있을 때만)
+        view = None
+        if len(all_patches) > 1:
+            view = PatchNoteSelectView(
+                all_patches, {"major_patch_version": latest_patch["major_version"]}
             )
 
-        # 마지막 업데이트 시간 추가
-        if last_updated:
-            embed.set_footer(text=f"마지막 업데이트: {last_updated}")
+        await interaction.followup.send(embed=embed, view=view)
 
-        await interaction.followup.send(embed=embed)
-
-        print(f"[{current_time()}] Success getRecentPatchNote from DB")
-        print(f"Major: {major_version} ({major_date}) - {major_url or 'URL 없음'}")
-        print(f"Minor patches: {len(minor_patches)}개")
-        print(f"Last updated: {last_updated}")
+        print(f"[{current_time()}] Success getRecentPatchNote from DB with dropdown")
+        print(f"Total patches available: {len(all_patches)}")
+        print(f"Latest: {latest_patch['major_version']} ({latest_patch['major_date']})")
         print_user_server(interaction)
         await logging_function(self.bot, interaction)
 

@@ -139,7 +139,7 @@ class PatchNoteCrawler:
         else:
             print(f"{current_os} 환경: Chromium 브라우저 사용")
             browser = await self._playwright.chromium.launch(
-                headless=True,
+                headless=False,  # 디버깅을 위해 headless=False로 설정
                 args=common_args,
             )
 
@@ -164,10 +164,11 @@ class PatchNoteCrawler:
             # 상위 10개만 검색하여 속도 향상
             for title_locator in article_elements[:10]:
                 title_text = await title_locator.text_content()
+                print(f"패치 제목: {title_text}")
 
-                if "PATCH NOTES" in title_text or "패치노트" in title_text:
+                if "패치노트" in title_text:
                     version_match = re.search(
-                        r"(\d+\.\d+)\s*(?:PATCH NOTES|패치노트)",
+                        r"(\d+\.\d+)\s*(?:패치노트)",
                         title_text,
                         re.IGNORECASE,
                     )
