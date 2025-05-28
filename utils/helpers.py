@@ -13,22 +13,6 @@ def current_time():
     return formatted_time
 
 
-cooldowns = {}
-
-
-async def check_cooldown(func_name, cooldown_time):
-    """함수 쿨다운 체크"""
-    now = time.time()
-    if func_name in cooldowns:
-        last_call, cooldown = cooldowns[func_name]
-        if now - last_call < cooldown:
-            # remaining = cooldown - (now - last_call)
-            # print(f"Function {func_name} is on cooldown for {remaining:.2f} seconds.")
-            return False
-    cooldowns[func_name] = (now, cooldown_time)
-    return True
-
-
 async def not_my_fault(ctx):
     """서버에 문제 생겼을때 출력하는 함수"""
     print("Error: almost Network error")

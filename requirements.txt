@@ -1,0 +1,12 @@
+# 디스코드 봇
+discord.py==2.3.2
+
+# 비동기 HTTP 클라이언트
+aiohttp==3.9.3
+
+# 웹 스크래핑 및 데이터 처리
+beautifulsoup4==4.13.4
+playwright==1.52.0
+
+# 환경 변수 관리
+python-dotenv==1.1.0 

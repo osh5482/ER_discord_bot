@@ -35,7 +35,7 @@ eternal_return_bot/
 │   └── cogs/                  # 명령어 그룹
 │       ├── admin.py           # 관리자 명령어
 │       ├── game_info.py       # 게임 정보 명령어
-│       ├── events.py          # 이벤트 리스너
+│       ├── events.py          # 기본 이벤트 리스너
 │       └── tasks.py           # 백그라운드 작업
 ├── core/                      # 핵심 비즈니스 로직
 │   ├── api/                   # 외부 API 관리
@@ -51,8 +51,7 @@ eternal_return_bot/
 └── assets/                    # 정적 자원
     └── images/                # 이미지 파일들
         ├── characters/        # 캐릭터 이미지
-        ├── icons/             # 아이콘 이미지
-        └── misc/              # 기타 이미지
+        └── icons/             # 아이콘 이미지
 ```
 
 ## 설치 및 실행 방법 (Installation and Setup)
@@ -117,7 +116,6 @@ steam=your_steam_api_key_here
 ```bash
 mkdir -p assets/images/characters
 mkdir -p assets/images/icons
-mkdir -p assets/images/misc
 mkdir -p logs
 ```
 
