@@ -17,9 +17,9 @@ class Config:
     STEAM_API_KEY = os.getenv("steam")
 
     # 봇 설정
-    BOT_OWNER_ID = 393987987005767690
-    SPECIFIC_SERVER_ID = 1156212577202872351
-    LOG_CHANNEL_ID = 1227163092719374366
+    BOT_OWNER_ID = int(os.getenv("BOT_OWNER_ID"))
+    SPECIFIC_SERVER_ID = int(os.getenv("SPECIFIC_SERVER_ID"))
+    LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
     # 데이터베이스 설정
     DATABASE_PATH = "data.db"
