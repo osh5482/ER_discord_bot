@@ -2,7 +2,6 @@ import asyncio
 import sqlite3
 import time
 from datetime import datetime, timedelta
-import matplotlib.pyplot as plt
 import json
 from config import Config
 
@@ -52,42 +51,117 @@ def create_patch_table(c):
 
 
 def insert_patch_data(c, patch_info):
-    """패치노트 데이터 저장 함수"""
+    """패치노트 데이터 저장 함수 - 버전별로 관리"""
     current_unix_time = int(time.time())
     current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    major_version = patch_info.get("major_patch_version")
+
+    if not major_version:
+        print("메이저 패치 버전 정보가 없습니다.")
+        return
 
     # minor_patches를 JSON 문자열로 변환
     minor_patches_json = json.dumps(
         patch_info.get("minor_patch_data", []), ensure_ascii=False
     )
 
-    # 기존 데이터 삭제 (최신 하나만 유지)
-    c.execute("DELETE FROM patch_notes")
+    # 기존 버전이 존재하는지 확인
+    c.execute("SELECT id FROM patch_notes WHERE major_version = ?", (major_version,))
+    existing_row = c.fetchone()
 
-    # 새 데이터 삽입
-    c.execute(
-        """INSERT INTO patch_notes 
-           (major_version, major_date, major_url, minor_patches, updated_at, str_updated_at) 
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (
-            patch_info.get("major_patch_version"),
-            patch_info.get("major_patch_date"),
-            patch_info.get("major_patch_url"),
-            minor_patches_json,
-            current_unix_time,
-            current_str_time,
-        ),
-    )
-    print(f"패치노트 데이터가 저장되었습니다. ({current_str_time})")
+    if existing_row:
+        # 기존 버전이 존재하면 업데이트
+        c.execute(
+            """UPDATE patch_notes 
+               SET major_date = ?, major_url = ?, minor_patches = ?, 
+                   updated_at = ?, str_updated_at = ?
+               WHERE major_version = ?""",
+            (
+                patch_info.get("major_patch_date"),
+                patch_info.get("major_patch_url"),
+                minor_patches_json,
+                current_unix_time,
+                current_str_time,
+                major_version,
+            ),
+        )
+        print(
+            f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})"
+        )
+    else:
+        # 새로운 버전이면 삽입
+        c.execute(
+            """INSERT INTO patch_notes 
+               (major_version, major_date, major_url, minor_patches, updated_at, str_updated_at) 
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                major_version,
+                patch_info.get("major_patch_date"),
+                patch_info.get("major_patch_url"),
+                minor_patches_json,
+                current_unix_time,
+                current_str_time,
+            ),
+        )
+        print(
+            f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})"
+        )
 
 
 def get_latest_patch_data(c):
-    """최신 패치노트 데이터 조회 함수"""
+    """최신 패치노트 데이터 조회 함수 - 가장 최근 업데이트된 버전 반환"""
     c.execute(
         """SELECT major_version, major_date, major_url, minor_patches, str_updated_at 
            FROM patch_notes 
            ORDER BY updated_at DESC 
            LIMIT 1"""
+    )
+    row = c.fetchone()
+
+    if row:
+        major_version, major_date, major_url, minor_patches_json, str_updated_at = row
+
+        # JSON 문자열을 파이썬 객체로 변환
+        try:
+            minor_patches = json.loads(minor_patches_json) if minor_patches_json else []
+        except json.JSONDecodeError:
+            minor_patches = []
+
+        return {
+            "major_patch_version": major_version,
+            "major_patch_date": major_date,
+            "major_patch_url": major_url,
+            "minor_patch_data": minor_patches,
+            "last_updated": str_updated_at,
+        }
+    return None
+
+
+def get_all_patch_versions(c):
+    """모든 저장된 패치 버전 목록 조회 함수"""
+    c.execute(
+        """SELECT major_version, str_updated_at 
+           FROM patch_notes 
+           ORDER BY updated_at DESC"""
+    )
+    rows = c.fetchall()
+
+    versions = []
+    for row in rows:
+        major_version, str_updated_at = row
+        versions.append({"version": major_version, "updated_at": str_updated_at})
+
+    return versions
+
+
+def get_patch_data_by_version(c, version):
+    """특정 버전의 패치노트 데이터 조회 함수"""
+    c.execute(
+        """SELECT major_version, major_date, major_url, minor_patches, str_updated_at 
+           FROM patch_notes 
+           WHERE major_version = ?""",
+        (version,),
     )
     row = c.fetchone()
 

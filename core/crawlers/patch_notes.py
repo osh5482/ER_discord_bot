@@ -149,8 +149,8 @@ class PatchNoteCrawler:
         """최적화된 페이지 로드"""
         print(f"페이지 로딩 중: {self.base_url}...")
         try:
-            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=8000)
-            await page.wait_for_selector("h4.article-title", timeout=5000)
+            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_selector("h4.article-title", timeout=30000)
             print("페이지 로드 완료.")
         except Exception as e:
             print(f"페이지 로드 중 타임아웃: {e}")
