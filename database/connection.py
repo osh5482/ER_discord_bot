@@ -28,7 +28,7 @@ def create_table(c):
 
 
 def create_patch_table(c):
-    """패치노트 테이블 생성 함수"""
+    """패치노트 테이블 생성 함수 - 새로운 구조"""
     c.execute(
         """SELECT count(name) FROM sqlite_master WHERE type='table' AND name='patch_notes' """
     )
@@ -38,7 +38,7 @@ def create_patch_table(c):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 major_version TEXT NOT NULL,
                 major_date TEXT,
-                major_url TEXT NOT NULL,
+                major_patches TEXT,
                 minor_patches TEXT,
                 updated_at INTEGER NOT NULL,
                 str_updated_at TEXT NOT NULL
@@ -48,23 +48,41 @@ def create_patch_table(c):
 
     # updated_at 컬럼을 index로 설정
     c.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON patch_notes (updated_at)")
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_major_version ON patch_notes (major_version)"
+    )
 
 
 def insert_patch_data(c, patch_info):
-    """패치노트 데이터 저장 함수 - 버전별로 관리"""
+    """패치노트 데이터 저장 함수 - 새로운 구조에 맞게 수정"""
     current_unix_time = int(time.time())
     current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     major_version = patch_info.get("major_patch_version")
+    major_date = patch_info.get("major_patch_date")
+    major_url = patch_info.get("major_patch_url")
+    minor_patch_data = patch_info.get("minor_patch_data", [])
 
     if not major_version:
         print("메이저 패치 버전 정보가 없습니다.")
         return
 
-    # minor_patches를 JSON 문자열로 변환
-    minor_patches_json = json.dumps(
-        patch_info.get("minor_patch_data", []), ensure_ascii=False
-    )
+    # 기존 방식과 호환성을 위해 major_url을 major_patches 형태로 변환
+    if major_url:
+        major_patches = [
+            {
+                "version": major_version,
+                "url": major_url,
+                "title": f"{major_version} PATCH NOTES",
+                "date": major_date or "",
+            }
+        ]
+    else:
+        major_patches = []
+
+    # JSON 문자열로 변환
+    major_patches_json = json.dumps(major_patches, ensure_ascii=False)
+    minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
 
     # 기존 버전이 존재하는지 확인
     c.execute("SELECT id FROM patch_notes WHERE major_version = ?", (major_version,))
@@ -74,12 +92,12 @@ def insert_patch_data(c, patch_info):
         # 기존 버전이 존재하면 업데이트
         c.execute(
             """UPDATE patch_notes 
-               SET major_date = ?, major_url = ?, minor_patches = ?, 
+               SET major_date = ?, major_patches = ?, minor_patches = ?, 
                    updated_at = ?, str_updated_at = ?
                WHERE major_version = ?""",
             (
-                patch_info.get("major_patch_date"),
-                patch_info.get("major_patch_url"),
+                major_date,
+                major_patches_json,
                 minor_patches_json,
                 current_unix_time,
                 current_str_time,
@@ -93,12 +111,12 @@ def insert_patch_data(c, patch_info):
         # 새로운 버전이면 삽입
         c.execute(
             """INSERT INTO patch_notes 
-               (major_version, major_date, major_url, minor_patches, updated_at, str_updated_at) 
+               (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at) 
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 major_version,
-                patch_info.get("major_patch_date"),
-                patch_info.get("major_patch_url"),
+                major_date,
+                major_patches_json,
                 minor_patches_json,
                 current_unix_time,
                 current_str_time,
@@ -110,36 +128,100 @@ def insert_patch_data(c, patch_info):
 
 
 def get_latest_patch_data(c):
-    """최신 패치노트 데이터 조회 함수 - 가장 최근 업데이트된 버전 반환"""
+    """최신 패치노트 데이터 조회 함수 - 새로운 구조에 맞게 수정"""
+    # 모든 패치 데이터를 버전 순으로 정렬하여 가져오기
     c.execute(
-        """SELECT major_version, major_date, major_url, minor_patches, str_updated_at 
+        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
            FROM patch_notes 
-           ORDER BY updated_at DESC 
-           LIMIT 1"""
+           ORDER BY major_version DESC"""
     )
-    row = c.fetchone()
+    rows = c.fetchall()
 
-    if row:
-        major_version, major_date, major_url, minor_patches_json, str_updated_at = row
+    if not rows:
+        return None
 
-        # JSON 문자열을 파이썬 객체로 변환
+    # 버전 정렬을 위한 함수
+    def sort_version_key(version_str):
         try:
+            parts = version_str.split(".")
+            return tuple(int(part) for part in parts)
+        except (ValueError, AttributeError):
+            return (0, 0)
+
+    # 패치 데이터 처리 및 정렬
+    all_patches = []
+    for row in rows:
+        (
+            major_version,
+            major_date,
+            major_patches_json,
+            minor_patches_json,
+            str_updated_at,
+        ) = row
+
+        # JSON 파싱
+        try:
+            major_patches = json.loads(major_patches_json) if major_patches_json else []
             minor_patches = json.loads(minor_patches_json) if minor_patches_json else []
         except json.JSONDecodeError:
+            major_patches = []
             minor_patches = []
 
-        return {
-            "major_patch_version": major_version,
-            "major_patch_date": major_date,
-            "major_patch_url": major_url,
-            "minor_patch_data": minor_patches,
-            "last_updated": str_updated_at,
-        }
-    return None
+        all_patches.append(
+            {
+                "major_version": major_version,
+                "major_date": major_date,
+                "major_patches": major_patches,
+                "minor_patches": minor_patches,
+                "str_updated_at": str_updated_at,
+            }
+        )
+
+    # 버전별로 정렬
+    all_patches.sort(key=lambda x: sort_version_key(x["major_version"]), reverse=True)
+
+    # 최신 메이저 패치 찾기 및 마이너 패치 병합
+    latest_major_patch = None
+    combined_minor_patches = []
+
+    for patch_data in all_patches:
+        major_patches = patch_data["major_patches"]
+        minor_patches = patch_data["minor_patches"]
+
+        # 메이저 패치가 있는 경우
+        if major_patches:
+            if not latest_major_patch:
+                # 첫 번째 메이저 패치를 최신으로 설정
+                latest_major_patch = patch_data
+                # 현재 버전의 마이너 패치도 추가
+                combined_minor_patches.extend(minor_patches)
+            break
+        else:
+            # 메이저 패치가 없는 경우, 마이너 패치를 수집
+            combined_minor_patches.extend(minor_patches)
+
+    if not latest_major_patch:
+        return None
+
+    # 기존 형식으로 반환 (하위 호환성)
+    first_major = (
+        latest_major_patch["major_patches"][0]
+        if latest_major_patch["major_patches"]
+        else {}
+    )
+
+    return {
+        "major_patch_version": latest_major_patch["major_version"],
+        "major_patch_date": latest_major_patch["major_date"]
+        or first_major.get("date", ""),
+        "major_patch_url": first_major.get("url", ""),
+        "minor_patch_data": combined_minor_patches,  # 병합된 마이너 패치들
+        "last_updated": latest_major_patch["str_updated_at"],
+    }
 
 
 def get_all_patch_versions(c):
-    """모든 저장된 패치 버전 목록 조회 함수"""
+    """모든 저장된 패치 버전 목록 조회 함수 - 새로운 구조에 맞게 수정"""
     c.execute(
         """SELECT major_version, str_updated_at 
            FROM patch_notes 
@@ -156,9 +238,9 @@ def get_all_patch_versions(c):
 
 
 def get_patch_data_by_version(c, version):
-    """특정 버전의 패치노트 데이터 조회 함수"""
+    """특정 버전의 패치노트 데이터 조회 함수 - 새로운 구조에 맞게 수정"""
     c.execute(
-        """SELECT major_version, major_date, major_url, minor_patches, str_updated_at 
+        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
            FROM patch_notes 
            WHERE major_version = ?""",
         (version,),
@@ -166,25 +248,33 @@ def get_patch_data_by_version(c, version):
     row = c.fetchone()
 
     if row:
-        major_version, major_date, major_url, minor_patches_json, str_updated_at = row
+        (
+            major_version,
+            major_date,
+            major_patches_json,
+            minor_patches_json,
+            str_updated_at,
+        ) = row
 
         # JSON 문자열을 파이썬 객체로 변환
         try:
+            major_patches = json.loads(major_patches_json) if major_patches_json else []
             minor_patches = json.loads(minor_patches_json) if minor_patches_json else []
         except json.JSONDecodeError:
+            major_patches = []
             minor_patches = []
+
+        # 기존 형식으로 반환 (하위 호환성)
+        first_major = major_patches[0] if major_patches else {}
 
         return {
             "major_patch_version": major_version,
-            "major_patch_date": major_date,
-            "major_patch_url": major_url,
+            "major_patch_date": major_date or first_major.get("date", ""),
+            "major_patch_url": first_major.get("url", ""),
             "minor_patch_data": minor_patches,
             "last_updated": str_updated_at,
         }
     return None
-
-
-# 캐싱 관련 함수 제거
 
 
 def insert_data(c, current_time, now, currentPlayer):
