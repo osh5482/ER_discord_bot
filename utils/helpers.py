@@ -2,6 +2,7 @@ from datetime import datetime
 import time
 import discord
 import inspect
+from config import Config
 
 
 def current_time():
@@ -35,7 +36,6 @@ def print_user_server(interaction: discord.Interaction):
 
 async def logging_function(bot, interaction: discord.Interaction):
     """명령어 아니어도 로그 남기는 함수"""
-    from config import Config
 
     log_channel = bot.get_channel(Config.LOG_CHANNEL_ID)
     function_name = inspect.stack()[1].function  # 호출한 함수의 이름을 자동으로 가져옴

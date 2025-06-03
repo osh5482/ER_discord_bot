@@ -10,3 +10,6 @@ playwright==1.52.0
 
 # 환경 변수 관리
 python-dotenv==1.1.0 
+
+# 로그 관리
+loguru==0.7.3
