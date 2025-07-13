@@ -27,10 +27,10 @@ Steam 게임 이터널 리턴과 관련된 다양한 정보를 제공하는 Disc
 
 ```
 eternal_return_bot/
-├── main.py                     # 봇 진입점
-├── config.py                   # 설정 관리
-├── requirements.txt            # 의존성 패키지
-├── .env.example               # 환경변수 예시
+├── main.py                    # 봇 진입점
+├── config.py                  # 설정 관리
+├── requirements.txt           # 의존성 패키지
+├── .env                       # 환경변수 (git 공유 X)
 ├── bot/                       # Discord 봇 관련
 │   └── cogs/                  # 명령어 그룹
 │       ├── admin.py           # 관리자 명령어
@@ -96,84 +96,9 @@ playwright install
 ```env
 # Discord Bot Tokens
 BREAD_TOKEN=your_discord_bot_token_here
-INFERIORITY_TOKEN=your_secondary_bot_token_here
 
 # API Keys
 ER=your_eternal_return_api_key_here
 steam=your_steam_api_key_here
 ```
 
-#### API 키 획득 방법:
-
-- **Discord Bot Token**: [Discord Developer Portal](https://discord.com/developers/applications)
-- **Eternal Return API Key**: [Eternal Return Developer Portal](https://developer.eternalreturn.io/)
-- **Steam API Key**: [Steam Web API](https://steamcommunity.com/dev/apikey)
-
-### 7. 디렉토리 구조 생성
-
-필요한 디렉토리들을 생성합니다:
-
-```bash
-mkdir -p assets/images/characters
-mkdir -p assets/images/icons
-mkdir -p logs
-```
-
-### 8. 봇 실행
-
-```bash
-python main.py
-```
-
-## 사용법 (Usage)
-
-Discord 서버에 봇을 초대한 후, 다음 명령어들을 사용할 수 있습니다:
-
-- `/ㅍㄴ` - 최신 패치노트 확인
-- `/ㄷㅈ` - 현재 동접자 수 확인
-- `/ㅅㅈ` - 현재 시즌 남은 기간 확인
-- `/ㄷㅁ` - 데미갓 MMR 컷 확인
-- `/ㅇㅌ` - 이터니티 MMR 컷 확인
-- `/ㅈㅈ [닉네임]` - 유저 전적 검색
-- `/ㅌㄱ [무기] [캐릭터]` - 캐릭터 통계 확인
-- `/관리` - 봇 관리 (관리자 전용)
-
-## 개발 환경 설정 (Development Setup)
-
-### 테스트 서버에서 개발
-
-`main.py`에서 개발 모드 활성화:
-
-```python
-# 개발 중이라면 특정 길드에만 동기화 (빠름)
-GUILD_ID = Config.SPECIFIC_SERVER_ID  # 테스트 서버 ID
-synced = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-```
-
-### 로그 확인
-
-봇의 모든 활동은 콘솔에 로그로 출력되며, 특정 채널에도 로그가 전송됩니다.
-
-## 기여하기 (Contributing)
-
-1. 이 저장소를 포크합니다
-2. 새로운 기능 브랜치를 생성합니다 (`git checkout -b feature/새기능`)
-3. 변경 사항을 커밋합니다 (`git commit -am '새 기능 추가'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/새기능`)
-5. Pull Request를 생성합니다
-
-## 라이선스 (License)
-
-이 프로젝트는 MIT 라이선스 하에 있습니다.
-
-## 문의 (Contact)
-
-프로젝트에 대한 문의사항이 있으시면 Issues를 통해 연락해 주세요.
-
----
-
-**참고사항**:
-
-- Discord 봇을 서버에 초대하려면 Discord Developer Portal에서 생성한 초대 링크를 사용하세요.
-- 모든 명령어는 Discord 슬래시 명령어(`/`)로 사용합니다.
-- 봇이 정상적으로 작동하려면 필요한 권한(메시지 보내기, 파일 첨부 등)을 부여해야 합니다.
