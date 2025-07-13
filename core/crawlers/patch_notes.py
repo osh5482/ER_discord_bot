@@ -42,20 +42,19 @@ class PatchNoteCrawler:
 
     async def get_patch_info(self) -> dict:
         """
-        최적화된 패치노트 정보 수집 (기존 함수명 유지)
+        최적화된 패치노트 정보 수집 (다중 파트 지원)
         """
         crawling_results = {
             "major_patch_version": None,
             "major_patch_date": None,
-            "major_patch_url": None,
-            "major_patch_title": None,  # 패치노트 제목 추가
+            "major_patches": [],  # 메이저 패치 파트 리스트
             "minor_patch_data": [],
         }
 
         try:
             page = await self._context.new_page()
 
-            # 성능 최적화: 불필요한 리소스 차단
+            # 성능 최적화
             await page.route(
                 "**/*.{png,jpg,jpeg,gif,svg,ico,woff,woff2,ttf}",
                 lambda route: route.abort(),
@@ -63,26 +62,29 @@ class PatchNoteCrawler:
             await page.route("**/analytics**", lambda route: route.abort())
             await page.route("**/ads**", lambda route: route.abort())
 
-            # 빠른 페이지 로드
             await self._load_page(page)
 
-            # 메이저 패치 정보 추출
-            major_version, major_date, major_url, major_title = (
-                await self._extract_major_patch(page)
-            )
-            crawling_results.update(
-                {
-                    "major_patch_version": major_version,
-                    "major_patch_date": major_date,
-                    "major_patch_url": major_url,
-                    "major_patch_title": major_title,  # 제목 정보 추가
-                }
-            )
+            # 메이저 패치 정보 추출 (모든 파트 수집)
+            major_patches = await self._extract_major_patch(page)
 
-            # 메이저 패치를 찾았다면 마이너 패치도 검색
-            if major_version and major_url:
+            if major_patches:
+                # 첫 번째 파트를 기준으로 기본 정보 설정
+                first_part = major_patches[0]
+                major_version = first_part["version"]
+                major_date = first_part["date"]
+
+                crawling_results.update(
+                    {
+                        "major_patch_version": major_version,
+                        "major_patch_date": major_date,
+                        "major_patches": major_patches,  # 모든 파트 정보
+                    }
+                )
+
+                # 마이너 패치 검색
+                major_urls = {p["url"] for p in major_patches}
                 minor_data = await self._extract_minor_patches(
-                    page, major_version, major_url, major_title
+                    page, major_version, major_urls
                 )
                 crawling_results["minor_patch_data"] = minor_data
 
@@ -160,62 +162,89 @@ class PatchNoteCrawler:
             print(f"페이지 로드 중 타임아웃: {e}")
             # 타임아웃이어도 이미 로드된 콘텐츠로 진행
 
-    async def _extract_major_patch(self, page):
-        """최적화된 메이저 패치 추출 - 제목 정보 포함"""
+    async def _extract_major_patch(self, page) -> list:
+        """메이저 패치 추출 (다중 파트 지원) - 각 파트를 리스트로 반환"""
+        major_patches = []
         try:
             article_elements = await page.locator("h4.article-title").all()
+            latest_version = None
 
-            # 상위 10개만 검색하여 속도 향상
+            # 1. 최신 메이저 버전 번호 찾기
             for title_locator in article_elements[:10]:
                 title_text = await title_locator.text_content()
-
                 if "PATCH NOTES" in title_text or "패치노트" in title_text:
                     version_match = re.search(
                         r"(\d+\.\d+)\s*(?:PATCH NOTES|패치노트)",
                         title_text,
                         re.IGNORECASE,
                     )
+                    # 마이너/핫픽스 버전(e.g., 8.0a)은 제외
+                    if version_match and not re.search(
+                        r"\d+\.\d+[a-z]", title_text, re.IGNORECASE
+                    ):
+                        latest_version = version_match.group(1)
+                        print(f"최신 메이저 버전 감지: {latest_version}")
+                        break
+
+            if not latest_version:
+                print("메이저 패치를 찾을 수 없습니다.")
+                return []
+
+            # 2. 최신 버전에 해당하는 모든 파트 수집
+            for title_locator in article_elements[:10]:
+                title_text = await title_locator.text_content()
+                # 제목에 latest_version이 포함되고, '패치노트'가 있으며, 마이너가 아닌 것
+                if (
+                    latest_version in title_text
+                    and ("PATCH NOTES" in title_text or "패치노트" in title_text)
+                    and not re.search(
+                        rf"{re.escape(latest_version)}[a-z]", title_text, re.IGNORECASE
+                    )
+                ):
                     date_match = re.search(r"(\d{4}\.\d{2}\.\d{2})", title_text)
+                    date = date_match.group(1) if date_match else None
+                    patch_title = title_text.strip()
 
-                    if version_match:
-                        version = version_match.group(1)
-                        date = date_match.group(1) if date_match else None
-                        # 전체 제목을 저장 (원본 제목 그대로)
-                        patch_title = title_text.strip()
+                    parent_a = title_locator.locator("xpath=ancestor::a[1]")
+                    relative_url = await parent_a.get_attribute("href")
+                    if relative_url:
+                        url = urljoin(self.base_url, relative_url)
+                        major_patches.append(
+                            {
+                                "version": latest_version,
+                                "date": date,
+                                "url": url,
+                                "title": patch_title,
+                            }
+                        )
+                        print(f"✅ 메이저 패치 발견: {latest_version} - {patch_title}")
+                        print(f"   URL: {url}")
 
-                        parent_a = title_locator.locator("xpath=ancestor::a[1]")
-                        relative_url = await parent_a.get_attribute("href")
-
-                        if relative_url:
-                            url = urljoin(self.base_url, relative_url)
-                            print(f"✅ 메이저 패치 발견: {version} - {patch_title}")
-                            print(f"   URL: {url}")
-                            return version, date, url, patch_title
+            # 제목순으로 정렬 (Part.1 -> Part.2)
+            major_patches.sort(key=lambda p: p["title"])
+            return major_patches
 
         except Exception as e:
             print(f"메이저 패치 추출 중 오류: {e}")
 
-        return None, None, None, None
+        return []
 
-    async def _extract_minor_patches(self, page, major_version, major_url, major_title):
-        """최적화된 마이너 패치 추출"""
+    async def _extract_minor_patches(self, page, major_version, major_urls: set):
+        """최���화된 마이너 패치 추출 (메이저 URL set을 받아 중복 방지)"""
         minor_patches = []
         minor_pattern = re.compile(rf"({re.escape(major_version)}[a-z])", re.IGNORECASE)
 
         try:
             article_elements = await page.locator("h4.article-title").all()
 
-            # 병렬 처리를 위한 작업 리스트
             tasks = []
-            for title_locator in article_elements[:20]:  # 상위 20개만 검색
+            for title_locator in article_elements[:20]:
                 tasks.append(
-                    self._process_minor_patch(title_locator, minor_pattern, major_url)
+                    self._process_minor_patch(title_locator, minor_pattern, major_urls)
                 )
 
-            # 병렬 처리 실행
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # 결과 수집
             for result in list(reversed(results)):
                 if isinstance(result, dict) and result:
                     minor_patches.append(result)
@@ -224,10 +253,10 @@ class PatchNoteCrawler:
         except Exception as e:
             print(f"마이너 패치 추출 중 오류: {e}")
 
-        return list(reversed(minor_patches))  # 최신순 정렬
+        return list(reversed(minor_patches))
 
-    async def _process_minor_patch(self, title_locator, minor_pattern, major_url):
-        """개별 마이너 패치 처리"""
+    async def _process_minor_patch(self, title_locator, minor_pattern, major_urls: set):
+        """개별 마이너 패치 처리 (메이저 URL set과 비교)"""
         try:
             title_text = await title_locator.text_content()
             minor_match = minor_pattern.search(title_text)
@@ -239,11 +268,11 @@ class PatchNoteCrawler:
 
                 if relative_url:
                     url = urljoin(self.base_url, relative_url)
-                    if url != major_url:  # 중복 방지
+                    if url not in major_urls:  # 메이저 패치 URL들과 중복 방지
                         return {
                             "version": minor_version,
                             "url": url,
-                            "title": title_text.strip(),  # 마이너 패치 제목도 저장
+                            "title": title_text.strip(),
                         }
         except Exception:
             pass
@@ -262,3 +291,67 @@ async def get_patch_info():
         patch_info = await crawler.get_patch_info()
 
         return patch_info
+
+
+async def save_patch_notes_to_db():
+    """패치노트 정보를 DB에 저장하는 함수"""
+    conn, c = connect_DB()
+    create_patch_notes_table(c)
+
+    try:
+        patch_info = await get_patch_info()
+
+        if not patch_info or not patch_info.get("major_patch_version"):
+            print("크롤링된 패치노트 정��가 없습니다.")
+            return False
+
+        # 메이저 패치노트 처리
+        major_version = patch_info["major_patch_version"]
+        major_title = patch_info["major_patch_title"]
+        major_url = patch_info["major_patch_url"]
+
+        # DB에서 해당 버전의 패치노트 조회
+        c.execute("SELECT title FROM patch_notes WHERE version=?", (major_version,))
+        existing_patch = c.fetchone()
+
+        # DB에 없거나 제목이 다를 경우에만 저장/업데이트
+        if not existing_patch or existing_patch[0] != major_title:
+            c.execute(
+                "INSERT OR REPLACE INTO patch_notes (version, title, url, is_major) VALUES (?, ?, ?, ?)",
+                (major_version, major_title, major_url, True),
+            )
+            print(
+                f"패치노트 버전 {major_version}이 업데이트되었습니다. ({datetime.now().strftime('%Y-%m-%d %H:%M:%S')})"
+            )
+            print(f"  제목: {major_title}")
+        else:
+            print(f"패치노트 버전 {major_version}은(는) 이미 최신입니다.")
+
+        # 마이너 패치노트 처리
+        for minor_patch in patch_info.get("minor_patch_data", []):
+            minor_version = minor_patch["version"]
+            minor_title = minor_patch["title"]
+            minor_url = minor_patch["url"]
+
+            c.execute("SELECT title FROM patch_notes WHERE version=?", (minor_version,))
+            existing_minor_patch = c.fetchone()
+
+            if not existing_minor_patch or existing_minor_patch[0] != minor_title:
+                c.execute(
+                    "INSERT OR REPLACE INTO patch_notes (version, title, url, is_major) VALUES (?, ?, ?, ?)",
+                    (minor_version, minor_title, minor_url, False),
+                )
+                print(f"  - 마이너 패치 {minor_version}이(가) 업데이트되었습니다.")
+            else:
+                print(f"  - 마이너 패치 {minor_version}은(는) 이미 최신입니다.")
+
+        conn.commit()
+        print("패치노트 데이터가 성공적으로 저장되었습니다.")
+        return True
+
+    except Exception as e:
+        print(f"DB 저장 중 오류 발생: {e}")
+        return False
+
+    finally:
+        conn.close()

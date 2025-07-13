@@ -54,64 +54,55 @@ def create_patch_table(c):
 
 
 def insert_patch_data(c, patch_info):
-    """패치노트 데이터 저장 함수 - 제목 정보 포함"""
+    """패치노트 데이터 저장 함수 - 다중 파트 지원"""
     current_unix_time = int(time.time())
     current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     major_version = patch_info.get("major_patch_version")
     major_date = patch_info.get("major_patch_date")
-    major_url = patch_info.get("major_patch_url")
-    major_title = patch_info.get("major_patch_title")  # 패치노트 제목 추가
+    # 크롤러에서 직접 받은 major_patches 리스트 사용
+    major_patches = patch_info.get("major_patches", [])
     minor_patch_data = patch_info.get("minor_patch_data", [])
 
     if not major_version:
         print("메이저 패치 버전 정보가 없습니다.")
         return
 
-    # 기존 방식과 호환성을 위해 major_url을 major_patches 형태로 변환
-    if major_url:
-        major_patches = [
-            {
-                "version": major_version,
-                "url": major_url,
-                "title": (
-                    major_title if major_title else f"{major_version} PATCH NOTES"
-                ),  # 실제 제목 사용
-                "date": major_date or "",
-            }
-        ]
-    else:
-        major_patches = []
-
     # JSON 문자열로 변환
     major_patches_json = json.dumps(major_patches, ensure_ascii=False)
     minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
 
     # 기존 버전이 존재하는지 확인
-    c.execute("SELECT id FROM patch_notes WHERE major_version = ?", (major_version,))
+    c.execute(
+        "SELECT id, major_patches FROM patch_notes WHERE major_version = ?",
+        (major_version,),
+    )
     existing_row = c.fetchone()
 
     if existing_row:
-        # 기존 버전이 존재하면 업데이트
-        c.execute(
-            """UPDATE patch_notes 
-               SET major_date = ?, major_patches = ?, minor_patches = ?, 
-                   updated_at = ?, str_updated_at = ?
-               WHERE major_version = ?""",
-            (
-                major_date,
-                major_patches_json,
-                minor_patches_json,
-                current_unix_time,
-                current_str_time,
-                major_version,
-            ),
-        )
-        print(
-            f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})"
-        )
-        if major_title:
-            print(f"  제목: {major_title}")
+        # 기존 데이터와 다를 경우에만 업데이트하여 불필요한 DB 쓰기 방지
+        _existing_id, existing_major_patches_json = existing_row
+        if existing_major_patches_json != major_patches_json:
+            c.execute(
+                """UPDATE patch_notes 
+                   SET major_date = ?, major_patches = ?, minor_patches = ?, 
+                       updated_at = ?, str_updated_at = ?
+                   WHERE major_version = ?""",
+                (
+                    major_date,
+                    major_patches_json,
+                    minor_patches_json,
+                    current_unix_time,
+                    current_str_time,
+                    major_version,
+                ),
+            )
+            print(f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})")
+            # 여러 파트의 제목을 모두 표시
+            for part in major_patches:
+                print(f"  - {part['title']}")
+        else:
+            print(f"패치노트 버전 {major_version}은(는) 이미 최신입니다.")
     else:
         # 새로운 버전이면 삽입
         c.execute(
@@ -127,11 +118,10 @@ def insert_patch_data(c, patch_info):
                 current_str_time,
             ),
         )
-        print(
-            f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})"
-        )
-        if major_title:
-            print(f"  제목: {major_title}")
+        print(f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})")
+        # 여러 파트의 제목을 모두 표시
+        for part in major_patches:
+            print(f"  - {part['title']}")
 
 
 def get_latest_patch_data(c):
