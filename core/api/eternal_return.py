@@ -208,10 +208,10 @@ async def get_user_season_data(user_tuple):
     else:
         user_num = user_tuple[0]
         # user_name = user_tuple[1]
-        base = "https://open-api.bser.io/v1/user/stats"
+        base = "https://open-api.bser.io/v2/user/stats"
         current_season_data = await get_current_season()
         season_id = current_season_data["seasonID"]
-        para = f"/{user_num}/{season_id}"
+        para = f"/{user_num}/{season_id}/3"  # 3 = 랭크게임 데이터
         url = base + para
         response_json = await add_header(url)
 
