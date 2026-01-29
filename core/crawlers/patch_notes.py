@@ -3,6 +3,8 @@ import asyncio
 import platform
 from urllib.parse import urljoin
 from playwright.async_api import async_playwright
+from database.connection import *
+from datetime import datetime
 
 
 class PatchNoteCrawler:
@@ -296,13 +298,13 @@ async def get_patch_info():
 async def save_patch_notes_to_db():
     """패치노트 정보를 DB에 저장하는 함수"""
     conn, c = connect_DB()
-    create_patch_notes_table(c)
+    create_table(c)
 
     try:
         patch_info = await get_patch_info()
 
         if not patch_info or not patch_info.get("major_patch_version"):
-            print("크롤링된 패치노트 정��가 없습니다.")
+            print("크롤링된 패치노트 정보가 없습니다.")
             return False
 
         # 메이저 패치노트 처리

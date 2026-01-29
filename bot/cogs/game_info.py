@@ -625,12 +625,42 @@ class game_info(commands.Cog):
     async def character_statistics(
         self, interaction: discord.Interaction, weapon: str, character: str
     ):
-        try:
-            weapon_E = weapon_english[f"{weapon}"]
-            character_E = char_english[f"{character}"]
-            s_dict = await gg.dakgg_crawler(weapon_E, character_E)
-            # print(s_dict)
+        # 먼저 defer()로 "로딩 중..." 상태 표시 (3초 타임아웃 방지)
+        await interaction.response.defer()
 
+        try:
+            # 무기/캐릭터 이름 검증
+            if weapon not in weapon_english:
+                await interaction.followup.send(
+                    f"❌ '{weapon}'은(는) 올바른 무기 이름이 아닙니다.", ephemeral=True
+                )
+                return
+
+            if character not in char_english:
+                await interaction.followup.send(
+                    f"❌ '{character}'은(는) 올바른 캐릭터 이름이 아닙니다.",
+                    ephemeral=True,
+                )
+                return
+
+            weapon_E = weapon_english[weapon]
+            character_E = char_english[character]
+
+            # 캐릭터가 해당 무기를 사용할 수 있는지 검증
+            if weapon not in char_weapons.get(character, []):
+                await interaction.followup.send(
+                    f"❌ {character}은(는) {weapon}을(를) 사용할 수 없습니다.\n"
+                    f"사용 가능한 무기: {', '.join(char_weapons[character])}",
+                    ephemeral=True,
+                )
+                return
+
+            print(f"[{current_time()}] 통계 크롤링 시작: {weapon} {character}")
+
+            # 크롤링 수행 (시간이 오래 걸림)
+            s_dict = await gg.dakgg_crawler(weapon_E, character_E)
+
+            # Embed 생성
             embed = discord.Embed(
                 title=f"{weapon} {character}",
                 color=0x00FF00,
@@ -662,16 +692,33 @@ class game_info(commands.Cog):
             )
             embed.set_thumbnail(url="attachment://profile.png")
 
-            await interaction.response.send_message(file=file, embed=embed)
+            # defer() 사용 후에는 followup.send()로 응답
+            await interaction.followup.send(file=file, embed=embed)
+
             print(
                 f"[{current_time()}] Success get character statistics {weapon} {character}"
             )
             print_user_server(interaction)
             await logging_function(self.bot, interaction)
+
+        except KeyError as e:
+            print(f"[{current_time()}] KeyError in character_statistics: {e}")
+            await interaction.followup.send(
+                f"❌ 통계 데이터를 찾을 수 없습니다. 필수 통계 항목이 누락되었습니다: {e}",
+                ephemeral=True,
+            )
+        except FileNotFoundError as e:
+            print(f"[{current_time()}] FileNotFoundError in character_statistics: {e}")
+            await interaction.followup.send(
+                f"❌ 캐릭터 이미지 파일을 찾을 수 없습니다.", ephemeral=True
+            )
         except Exception as e:
-            print("failed making embed: ", e)
-            await interaction.response.send_message(
-                "통계를 가져오는 데 실패했습니다.", ephemeral=True
+            print(f"[{current_time()}] Error in character_statistics: {e}")
+            import traceback
+
+            traceback.print_exc()
+            await interaction.followup.send(
+                f"❌ 통계를 가져오는 데 실패했습니다.\n오류: {str(e)}", ephemeral=True
             )
 
 
