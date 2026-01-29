@@ -68,7 +68,7 @@ async def get_user_num(nickname) -> tuple:
         # print(response_json)
         if response_json["code"] == 200:
             user = response_json["user"]
-            user_num = user["userNum"]
+            user_num = user["userId"]
             user_name = user["nickname"]
             return user_num, user_name  # 유저정보가 있으면 id랑 닉네임 반환
 
@@ -208,7 +208,7 @@ async def get_user_season_data(user_tuple):
     else:
         user_num = user_tuple[0]
         # user_name = user_tuple[1]
-        base = "https://open-api.bser.io/v2/user/stats"
+        base = "https://open-api.bser.io/v2/user/stats/uid"
         current_season_data = await get_current_season()
         season_id = current_season_data["seasonID"]
         para = f"/{user_num}/{season_id}/3"  # 3 = 랭크게임 데이터
