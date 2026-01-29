@@ -233,7 +233,7 @@ def detect_tier(userStats) -> str:
     반환값 : str(티어)"""
     mmr = userStats["mmr"]
 
-    if mmr >= 6400:
+    if mmr >= 7400:
         rank = userStats["rank"]
         userTier = is_ranker(rank, mmr)
         # print("Success: detecting user tier")
@@ -256,14 +256,12 @@ def is_not_ranker(mmr, tiers=tiers):
 
 def is_ranker(rank: int, mmr: int) -> str:
     """다이아 이상 티어 구분 함수"""
-    if rank <= 300 and mmr >= 7700:
+    if rank <= 300 and mmr >= 8100:
         tier = "이터니티"
-    elif rank < -1000 and mmr >= 7700:
+    elif rank <= 1000 and mmr >= 8100:
         tier = "데미갓"
-    elif mmr >= 7100:
-        tier = "미스릴"
     else:
-        tier = "메테오라이트"
+        tier = "미스릴"
     return tier
 
 
