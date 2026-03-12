@@ -2,6 +2,7 @@ import asyncio
 import platform
 from playwright.async_api import async_playwright
 from utils.constants import *
+from utils.logger import logger
 
 
 class DakggCrawler:
@@ -65,7 +66,7 @@ class DakggCrawler:
         """
         )
 
-        print("✅ Stealth 패치 적용 완료")
+        logger.debug("Stealth 패치 적용 완료")
 
     """닥지지 통계 크롤링 클래스 (Playwright 사용)"""
 
@@ -108,7 +109,7 @@ class DakggCrawler:
     async def _launch_browser(self):
         """최적화된 브라우저 설정"""
         current_os = platform.system()
-        print(f"운영체제 감지: {current_os}")
+        logger.debug(f"운영체제 감지: {current_os}")
 
         # 공통 최적화 옵션
         common_args = [
@@ -135,7 +136,7 @@ class DakggCrawler:
 
         if current_os == "Linux":
             try:
-                print("리눅스 환경: Firefox 브라우저 사용")
+                logger.info("리눅스 환경: Firefox 브라우저 사용")
                 browser = await self._playwright.firefox.launch(
                     headless=True,
                     firefox_user_prefs={
@@ -146,13 +147,13 @@ class DakggCrawler:
                     },
                 )
             except Exception as e:
-                print(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
+                logger.warning(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
                 browser = await self._playwright.chromium.launch(
                     headless=True,
                     args=common_args,
                 )
         else:
-            print(f"{current_os} 환경: Chromium 브라우저 사용")
+            logger.info(f"{current_os} 환경: Chromium 브라우저 사용")
             browser = await self._playwright.chromium.launch(
                 headless=True,
                 args=common_args,
@@ -191,7 +192,7 @@ class DakggCrawler:
                 lambda route: route.abort(),
             )
 
-            print(f"페이지 로딩 중: {url}")
+            logger.info(f"페이지 로딩 중: {url}")
 
             # 페이지 이동 전 짧은 지연 (봇처럼 보이지 않도록)
             await asyncio.sleep(0.5)
@@ -204,7 +205,7 @@ class DakggCrawler:
             # 페이지 로드 후 짧은 대기 (DOM 안정화)
             await asyncio.sleep(0.5)
 
-            print("통계 데이터 로딩 완료")
+            logger.debug("통계 데이터 로딩 완료")
 
             # 기본 정보 설정
             statistics_dict = {
@@ -267,13 +268,12 @@ class DakggCrawler:
                     f"필수 통계 항목이 누락되었습니다: {', '.join(missing_stats)}"
                 )
 
-            print("✅ 통계 크롤링 완료:")
-            print(statistics_dict)
+            logger.info(f"통계 크롤링 완료: {statistics_dict}")
 
             return statistics_dict
 
         except Exception as e:
-            print(f"❌ 크롤링 중 오류 발생: {e}")
+            logger.error(f"크롤링 중 오류 발생: {e}")
             if page:
                 await page.close()
             raise
@@ -302,15 +302,15 @@ async def main():
     try:
         # 예시: 글러브 현우 통계 크롤링
         stats = await dakgg_crawler("Glove", "Hyunwoo")
-        print("\n=== 크롤링 결과 ===")
+        logger.debug("=== 크롤링 결과 ===")
         for key, value in stats.items():
             if isinstance(value, dict):
-                print(f"{key}: {value['value']} (순위: {value['ranking']})")
+                logger.debug(f"{key}: {value['value']} (순위: {value['ranking']})")
             else:
-                print(f"{key}: {value}")
+                logger.debug(f"{key}: {value}")
 
     except Exception as e:
-        print(f"에러 발생: {e}")
+        logger.error(f"에러 발생: {e}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-from utils.helpers import current_time, print_user_server
+from utils.helpers import print_user_server
+from utils.logger import logger
 
 
 class events(commands.Cog):
@@ -17,12 +18,12 @@ class events(commands.Cog):
 
         # 명령어 쿨타임
         if isinstance(error, commands.CommandOnCooldown):
-            print(f"[{current_time()}] {ctx.command} was requested on cooldown")
+            logger.warning(f"{ctx.command} was requested on cooldown")
             print_user_server(ctx)
             return
 
         # 기타 에러 로깅
-        print(f"[{current_time()}] Unhandled error: {error}")
+        logger.error(f"Unhandled error: {error}")
 
 
 async def setup(bot):

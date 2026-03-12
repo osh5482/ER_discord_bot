@@ -224,6 +224,9 @@ tempCodeRunnerFile.py
 # DB file
 *.db
 
+# Log files
+logs/
+
 # .vscode folder
 .vscode/*.*
 

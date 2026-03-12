@@ -3,7 +3,7 @@ from datetime import datetime, time
 from discord.ext import tasks, commands
 from database.connection import *
 from core.api.eternal_return import get_current_player_api
-from utils.helpers import current_time
+from utils.logger import logger
 
 
 class tasks_cog(commands.Cog):
@@ -22,14 +22,13 @@ class tasks_cog(commands.Cog):
         conn, c = connect_DB()
         create_table(c)
         current_unix_time = int(time.time())
-        now = current_time()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_player = await get_current_player_api()
         insert_data(c, current_unix_time, now, current_player)
         delete_old_data(c)
         sort_by_time(c)
         current_player = format(current_player, ",")
-        # print(f"24시간 동안 최고 동접: {most_play}")
-        print(f"[{now}] Save player {current_player}")
+        logger.info(f"Save player {current_player}")
 
         c.close()
         conn.close()
@@ -50,27 +49,25 @@ class tasks_cog(commands.Cog):
 
         # 현재 시간이 목표 시간과 일치하는지 확인
         if (current_hour, current_minute) in target_times:
-            print(
-                f"[{current_time()}] 예정된 시간 도래 - 패치노트 크롤링을 시작합니다..."
-            )
+            logger.info("예정된 시간 도래 - 패치노트 크롤링을 시작합니다...")
 
             try:
                 success = await save_patch_notes_to_db()
 
                 if success:
-                    print(f"[{current_time()}] 패치노트 크롤링 및 저장 완료")
+                    logger.info("패치노트 크롤링 및 저장 완료")
                 else:
-                    print(f"[{current_time()}] 패치노트 크롤링 실패")
+                    logger.warning("패치노트 크롤링 실패")
 
             except Exception as e:
-                print(f"[{current_time()}] 패치노트 스케줄러 오류: {e}")
+                logger.error(f"패치노트 스케줄러 오류: {e}")
 
     @patch_crawler.before_loop
     async def before_patch_crawler(self):
         """봇이 준비될 때까지 대기"""
         await self.bot.wait_until_ready()
         # 봇 시작 시 한 번 실행
-        print(f"[{current_time()}] 봇 시작 시 패치노트 초기 크롤링 실행")
+        logger.info("봇 시작 시 패치노트 초기 크롤링 실행")
         await save_patch_notes_to_db()
 
     # @commands.command(aliases=["그래프"])

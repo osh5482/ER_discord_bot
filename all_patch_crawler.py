@@ -8,6 +8,7 @@ import sqlite3
 import json
 from datetime import datetime
 from config import Config
+from utils.logger import logger
 
 
 class AllPatchCrawler:
@@ -45,7 +46,7 @@ class AllPatchCrawler:
     async def _launch_browser(self):
         """최적화된 브라우저 설정"""
         current_os = platform.system()
-        print(f"운영체제 감지: {current_os}")
+        logger.debug(f"운영체제 감지: {current_os}")
 
         # 공통 최적화 옵션
         common_args = [
@@ -72,7 +73,7 @@ class AllPatchCrawler:
 
         if current_os == "Linux":
             try:
-                print("리눅스 환경: Firefox 브라우저 사용")
+                logger.info("리눅스 환경: Firefox 브라우저 사용")
                 browser = await self._playwright.firefox.launch(
                     headless=True,  # 콘솔 출력을 위해 headless 모드 유지
                     firefox_user_prefs={
@@ -83,13 +84,13 @@ class AllPatchCrawler:
                     },
                 )
             except Exception as e:
-                print(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
+                logger.warning(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
                 browser = await self._playwright.chromium.launch(
                     headless=True,
                     args=common_args,
                 )
         else:
-            print(f"{current_os} 환경: Chromium 브라우저 사용")
+            logger.info(f"{current_os} 환경: Chromium 브라우저 사용")
             browser = await self._playwright.chromium.launch(
                 headless=False,  # 디버깅을 위해 headless 모드 해제
                 args=common_args,
@@ -107,7 +108,7 @@ class AllPatchCrawler:
         """기존 patch_notes 테이블을 삭제하고 새로운 구조로 재생성"""
         # 기존 patch_notes 테이블 삭제
         c.execute("DROP TABLE IF EXISTS patch_notes")
-        print("기존 patch_notes 테이블을 삭제했습니다.")
+        logger.info("기존 patch_notes 테이블을 삭제했습니다.")
 
         # 새로운 구조로 patch_notes 테이블 생성
         c.execute(
@@ -121,7 +122,7 @@ class AllPatchCrawler:
                 str_updated_at TEXT NOT NULL
             )"""
         )
-        print("새로운 구조로 patch_notes 테이블이 생성되었습니다.")
+        logger.info("새로운 구조로 patch_notes 테이블이 생성되었습니다.")
 
         # 인덱스 생성
         c.execute(
@@ -138,7 +139,7 @@ class AllPatchCrawler:
 
         # 기존 데이터 모두 삭제 (전체 재작성 방식)
         c.execute("DELETE FROM patch_notes")
-        print("기존 patch_notes 데이터를 삭제했습니다.")
+        logger.info("기존 patch_notes 데이터를 삭제했습니다.")
 
         # 새로운 데이터 삽입
         inserted_count = 0
@@ -158,7 +159,7 @@ class AllPatchCrawler:
             )
             inserted_count += 1
 
-        print(f"✅ 총 {inserted_count}개의 패치 버전이 데이터베이스에 저장되었습니다.")
+        logger.info(f"총 {inserted_count}개의 패치 버전이 데이터베이스에 저장되었습니다.")
         return inserted_count
 
     def _get_all_patches_from_db(self, c):
@@ -219,9 +220,9 @@ class AllPatchCrawler:
             await page.route("**/analytics**", lambda route: route.abort())
             await page.route("**/ads**", lambda route: route.abort())
 
-            print(f"'{self.base_url}' 페이지로 이동 중...")
+            logger.info(f"'{self.base_url}' 페이지로 이동 중...")
             await page.goto(self.base_url, wait_until="domcontentloaded", timeout=30000)
-            print("페이지 로드 완료.")
+            logger.info("페이지 로드 완료.")
 
             # 모든 패치노트 로드
             await self._load_all_patches(page)
@@ -233,12 +234,12 @@ class AllPatchCrawler:
             return patch_data
 
         except Exception as e:
-            print(f"크롤링 중 오류 발생: {e}")
+            logger.error(f"크롤링 중 오류 발생: {e}")
             return None
 
     async def _load_all_patches(self, page):
         """모든 More 버튼을 클릭하여 모든 패치노트 로드"""
-        print("\n모든 'More' 버튼을 클릭하여 모든 패치 노트를 로드합니다...")
+        logger.info("모든 'More' 버튼을 클릭하여 모든 패치 노트를 로드합니다...")
 
         click_count = 0
         # max_clicks = 50  # 무한 루프 방지
@@ -250,27 +251,27 @@ class AllPatchCrawler:
                 is_enabled = await more_button.is_enabled() if is_visible else False
 
                 if is_visible and is_enabled:
-                    print(f"More 버튼 클릭 중... ({click_count + 1})")
+                    logger.debug(f"More 버튼 클릭 중... ({click_count + 1})")
                     await more_button.click()
                     await asyncio.sleep(1)  # 로딩 시간 확보
                     click_count += 1
                 else:
-                    print("더 이상 'More' 버튼이 없거나 비활성화되어 있습니다.")
+                    logger.debug("더 이상 'More' 버튼이 없거나 비활성화되어 있습니다.")
                     break
 
             except Exception as e:
-                print(f"More 버튼 클릭 중 오류: {e}")
+                logger.warning(f"More 버튼 클릭 중 오류: {e}")
                 break
 
-        print(f"총 {click_count}번의 More 버튼을 클릭했습니다.")
+        logger.info(f"총 {click_count}번의 More 버튼을 클릭했습니다.")
 
     async def _collect_patch_data(self, page):
         """패치노트 제목과 링크를 수집하여 정리"""
-        print("\nh4.article-title 셀렉터로 모든 패치 노트 제목과 링크를 수집합니다...")
+        logger.info("h4.article-title 셀렉터로 모든 패치 노트 제목과 링크를 수집합니다...")
 
         # 모든 제목 요소 가져오기
         article_elements = await page.locator("h4.article-title").all()
-        print(f"총 {len(article_elements)}개의 패치 노트를 수집했습니다.")
+        logger.info(f"총 {len(article_elements)}개의 패치 노트를 수집했습니다.")
 
         # 패치 노트 데이터 수집
         patch_list = []
@@ -290,7 +291,7 @@ class AllPatchCrawler:
                     patch_list.append({"title": title_text.strip(), "url": full_url})
 
             except Exception as e:
-                print(f"패치 데이터 수집 중 오류: {e}")
+                logger.warning(f"패치 데이터 수집 중 오류: {e}")
                 continue
 
         # 패치 데이터 분석 및 그룹화
@@ -298,7 +299,7 @@ class AllPatchCrawler:
 
     def _analyze_and_group_patches(self, patch_list):
         """패치 데이터를 분석하고 버전별로 그룹화"""
-        print("\n패치 노트 데이터를 분석하고 그룹화합니다...")
+        logger.info("패치 노트 데이터를 분석하고 그룹화합니다...")
 
         # 패치 노트를 버전별로 그룹화할 딕셔너리 초기화
         grouped_patches = defaultdict(
@@ -335,9 +336,7 @@ class AllPatchCrawler:
                 if grouping_key.startswith("0."):
                     major_version_num = int(grouping_key.split(".")[0])
                     if major_version_num == 0:
-                        print(
-                            f"\n[알림] 0.x 이하 버전 ({grouping_key})이 감지되어 패치 노트 처리를 중단합니다."
-                        )
+                        logger.info(f"0.x 이하 버전 ({grouping_key})이 감지되어 패치 노트 처리를 중단합니다.")
                         break
 
                 # 메이저/마이너 패치 구분
@@ -360,7 +359,7 @@ class AllPatchCrawler:
                         }
                     )
             else:
-                print(f"경고: 버전 정보를 찾을 수 없는 패치 노트: {title_text}")
+                logger.warning(f"버전 정보를 찾을 수 없는 패치 노트: {title_text}")
 
         return grouped_patches
 
@@ -382,7 +381,7 @@ class AllPatchCrawler:
             grouped_patches.keys(), key=sort_version_keys, reverse=True
         )
 
-        print("\n--- 패치 노트 분류 결과 ---")
+        logger.info("--- 패치 노트 분류 결과 ---")
         for version_key in sorted_versions:
             patches = grouped_patches[version_key]
             major_info = patches["major"]
@@ -393,21 +392,20 @@ class AllPatchCrawler:
                 major_date_str = (
                     f" ({major_info['dates'][0]})" if major_info["dates"] else ""
                 )
-                print(f"\n== 버전 {version_key}{major_date_str} ==")
+                logger.debug(f"== 버전 {version_key}{major_date_str} ==")
 
                 if major_info["titles"]:
-                    print("  [메이저 패치 노트]")
+                    logger.debug("  [메이저 패치 노트]")
                     for i, title in enumerate(major_info["titles"]):
                         url = (
                             major_info["urls"][i]
                             if i < len(major_info["urls"])
                             else "URL 없음"
                         )
-                        print(f"    - {title}")
-                        print(f"      링크: {url}")
+                        logger.debug(f"    - {title} | 링크: {url}")
 
                 if minor_patches:
-                    print("  [마이너 패치 노트]")
+                    logger.debug("  [마이너 패치 노트]")
                     # 마이너 패치 정렬 (날짜 및 알파벳 순)
                     sorted_minor_patches = sorted(
                         minor_patches,
@@ -420,16 +418,15 @@ class AllPatchCrawler:
                         minor_date_str = (
                             f" ({patch_detail['date']})" if patch_detail["date"] else ""
                         )
-                        print(f"    - {patch_detail['title']}{minor_date_str}")
-                        print(f"      링크: {patch_detail['url']}")
+                        logger.debug(f"    - {patch_detail['title']}{minor_date_str} | 링크: {patch_detail['url']}")
             else:
-                print(f"버전 {version_key}: 해당 버전의 패치 노트가 없습니다.")
+                logger.debug(f"버전 {version_key}: 해당 버전의 패치 노트가 없습니다.")
 
-        print("\n--- 패치 노트 분류 완료 ---")
+        logger.info("--- 패치 노트 분류 완료 ---")
 
     def _save_to_database(self, grouped_patches):
         """그룹화된 패치 데이터를 SQLite 데이터베이스에 저장"""
-        print("\nSQLite 데이터베이스에 저장 중...")
+        logger.info("SQLite 데이터베이스에 저장 중...")
 
         # 데이터베이스 연결 및 테이블 재생성
         conn, c = self._connect_db()
@@ -522,9 +519,7 @@ class AllPatchCrawler:
                 for row in db_data
                 if row["minor_patches"] != "[]"
             )
-            print(
-                f"메이저 패치: {total_major_patches}개, 마이너 패치: {total_minor_patches}개"
-            )
+            logger.info(f"메이저 패치: {total_major_patches}개, 마이너 패치: {total_minor_patches}개")
 
             # 연결 종료
             c.close()
@@ -532,7 +527,7 @@ class AllPatchCrawler:
 
             return inserted_count
         else:
-            print("❌ 저장할 데이터가 없습니다.")
+            logger.warning("저장할 데이터가 없습니다.")
             # 연결 종료
             c.close()
             conn.close()
@@ -547,7 +542,7 @@ class AllPatchCrawler:
             """SELECT count(name) FROM sqlite_master WHERE type='table' AND name='patch_notes' """
         )
         if c.fetchone()[0] == 0:
-            print("patch_notes 테이블이 존재하지 않습니다.")
+            logger.warning("patch_notes 테이블이 존재하지 않습니다.")
             c.close()
             conn.close()
             return []
@@ -558,27 +553,27 @@ class AllPatchCrawler:
         conn.close()
 
         if patches:
-            print(f"\n=== 데이터베이스 저장된 패치노트 요약 ===")
-            print(f"총 {len(patches)}개의 패치 버전이 저장되어 있습니다.")
+            logger.info(f"=== 데이터베이스 저장된 패치노트 요약 ===")
+            logger.info(f"총 {len(patches)}개의 패치 버전이 저장되어 있습니다.")
 
             # 최신 5개 버전 출력
-            print("\n최신 5개 패치 버전:")
+            logger.info("최신 5개 패치 버전:")
             for i, patch in enumerate(patches[:5]):
                 major_patches_count = len(patch["major_patches"])
                 minor_patches_count = len(patch["minor_patches"])
-                print(
+                logger.info(
                     f"  {i+1}. 버전 {patch['major_version']} (메이저: {major_patches_count}개, 마이너: {minor_patches_count}개)"
                 )
 
             return patches
         else:
-            print("데이터베이스에 저장된 패치노트가 없습니다.")
+            logger.warning("데이터베이스에 저장된 패치노트가 없습니다.")
             return []
 
 
 async def main():
     """메인 실행 함수"""
-    print("=== Eternal Return 전체 패치노트 크롤러 시작 ===")
+    logger.info("=== Eternal Return 전체 패치노트 크롤러 시작 ===")
 
     async with AllPatchCrawler() as crawler:
         # 모든 패치노트 크롤링
@@ -592,15 +587,14 @@ async def main():
             saved_count = crawler._save_to_database(grouped_patches)
 
             if saved_count > 0:
-                print(f"\n=== 크롤링 완료 ===")
-                print(f"데이터베이스에 {saved_count}개 버전 저장 완료")
+                logger.info(f"=== 크롤링 완료 === 데이터베이스에 {saved_count}개 버전 저장 완료")
 
                 # 저장된 데이터 요약 확인
                 crawler.get_all_patches_summary()
             else:
-                print("\n=== 크롤링 완료 (저장 실패) ===")
+                logger.warning("=== 크롤링 완료 (저장 실패) ===")
         else:
-            print("\n=== 크롤링 실패 ===")
+            logger.error("=== 크롤링 실패 ===")
 
 
 if __name__ == "__main__":

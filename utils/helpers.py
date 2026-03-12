@@ -1,22 +1,13 @@
 from datetime import datetime
-import time
 import discord
 import inspect
 from config import Config
-
-
-def current_time():
-    """현재시간 확인함수
-    반환값 : str(현재시간 Y-m-d H-M-S)"""
-    current_time = datetime.now()
-    # 시간을 원하는 형식으로 포맷하여 출력
-    formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
-    return formatted_time
+from utils.logger import logger
 
 
 async def not_my_fault(ctx):
     """서버에 문제 생겼을때 출력하는 함수"""
-    print("Error: almost Network error")
+    logger.error("Network error occurred")
     embed = discord.Embed(
         title=f"정보 불러오기 실패",
         description=f"Api 네트워크 오류",
@@ -28,10 +19,20 @@ async def not_my_fault(ctx):
     await ctx.channel.send(file=file, embed=embed)
 
 
-def print_user_server(interaction: discord.Interaction):
+def print_user_server(interaction: discord.Interaction, message: str = ""):
+    """
+    명령어 실행 결과와 실행자 정보를 한 줄의 로그로 출력한다.
+
+    Args:
+        interaction: Discord Interaction 객체 (사용자 및 서버 정보 추출용)
+        message: 앞에 붙일 로그 메시지. 없으면 실행자 정보만 출력.
+    """
     user_name = interaction.user
     server_name = interaction.guild
-    print(f"└Processed by {user_name} in {server_name}")
+    if message:
+        logger.info(f"{message} | by {user_name} in {server_name}")
+    else:
+        logger.info(f"Processed by {user_name} in {server_name}")
 
 
 async def logging_function(bot, interaction: discord.Interaction):
@@ -39,7 +40,8 @@ async def logging_function(bot, interaction: discord.Interaction):
 
     log_channel = bot.get_channel(Config.LOG_CHANNEL_ID)
     function_name = inspect.stack()[1].function  # 호출한 함수의 이름을 자동으로 가져옴
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     await log_channel.send(
-        f"*[{current_time()}]* `{function_name}` was processed by `{interaction.user}` in `{interaction.guild}`"
+        f"*[{now}]* `{function_name}` was processed by `{interaction.user}` in `{interaction.guild}`"
     )

@@ -4,7 +4,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from database.connection import save_patch_notes_to_db
-from utils.helpers import current_time, print_user_server, logging_function
+from utils.helpers import print_user_server, logging_function
+from utils.logger import logger
 from config import Config
 
 BOT_OWNER_ID = Config.BOT_OWNER_ID
@@ -31,7 +32,7 @@ class admin(commands.Cog):
                 ephemeral=True,
             )
         except Exception as e:
-            print(f"ERROR: {e}")
+            logger.error(f"manage command error: {e}")
             await interaction.response.send_message(
                 f"명령어 실행 중 오류가 발생했습니다.\n{e}", ephemeral=True
             )
@@ -53,7 +54,7 @@ class admin(commands.Cog):
 
         await interaction.response.defer(ephemeral=True)
 
-        print(f"[{current_time()}] 관리자가 패치노트 새로고침을 요청했습니다.")
+        logger.info("관리자가 패치노트 새로고침을 요청했습니다.")
 
         try:
             # 수동 새로고침은 전체 크롤링 모드로 실행 (모든 과거 패치 포함)
@@ -63,20 +64,20 @@ class admin(commands.Cog):
                 await interaction.followup.send(
                     "✅ 패치노트가 성공적으로 새로고침되었습니다.", ephemeral=True
                 )
-                print(f"[{current_time()}] 패치노트 수동 새로고침 완료")
+                logger.info("패치노트 수동 새로고침 완료")
             else:
                 await interaction.followup.send(
                     "❌ 패치노트 새로고침에 실패했습니다.", ephemeral=True
                 )
-                print(f"[{current_time()}] 패치노트 수동 새로고침 실패")
+                logger.warning("패치노트 수동 새로고침 실패")
 
         except Exception as e:
             await interaction.followup.send(
                 f"❌ 패치노트 새로고침 중 오류가 발생했습니다: {e}", ephemeral=True
             )
-            print(f"[{current_time()}] 패치노트 수동 새로고침 오류: {e}")
+            logger.error(f"패치노트 수동 새로고침 오류: {e}")
 
-        print_user_server(interaction)
+        print_user_server(interaction, "패치노트 수동 새로고침 완료" if success else "패치노트 수동 새로고침 실패")
         await logging_function(self.bot, interaction)
 
     async def list_servers(self, interaction: discord.Interaction):
@@ -86,9 +87,9 @@ class admin(commands.Cog):
         server_list = sorted(server_list)
         total_members = sum(server.member_count for server in servers)
 
-        print("\n".join(server_list))
-        print(f"[{current_time()}] server count: {len(server_list)}")
-        print(f"Total members: {total_members}")
+        logger.info("\n".join(server_list))
+        logger.info(f"server count: {len(server_list)}")
+        logger.info(f"Total members: {total_members}")
 
         await interaction.followup.send(
             f"```사용 서버 갯수 : {len(server_list)}\n서버 멤버 수: {total_members}```",
@@ -149,9 +150,9 @@ class admin(commands.Cog):
             try:
                 await self.bot.unload_extension(extension)  # Unload the cog
                 await self.bot.load_extension(extension)  # Load it again
-                print(f"[{current_time()}] Reloading Success: `{extension}`")
+                logger.info(f"Reloading Success: `{extension}`")
             except Exception as e:
-                print(f"[{current_time()}] Reloading Fail: `{extension}`\n{e}")
+                logger.error(f"Reloading Fail: `{extension}`\n{e}")
 
         await logging_function(self.bot, interaction)
 

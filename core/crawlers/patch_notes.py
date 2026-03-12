@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 from playwright.async_api import async_playwright
 from database.connection import *
 from datetime import datetime
+from utils.logger import logger
 
 
 class PatchNoteCrawler:
@@ -71,7 +72,7 @@ class PatchNoteCrawler:
 
             # 페이지에서 모든 고유 메이저 버전 수집 (최신순)
             all_versions = await self._extract_all_major_versions(page)
-            print(f"페이지에서 감지된 메이저 버전 목록: {all_versions}")
+            logger.info(f"페이지에서 감지된 메이저 버전 목록: {all_versions}")
 
             for major_version in all_versions:
                 # 각 버전의 모든 파트(Part.1, Part.2 등) 수집
@@ -99,7 +100,7 @@ class PatchNoteCrawler:
             await page.close()
 
         except Exception as e:
-            print(f"크롤링 중 오류 발생: {e}")
+            logger.error(f"크롤링 중 오류 발생: {e}")
             return None
 
         return crawling_results
@@ -107,7 +108,7 @@ class PatchNoteCrawler:
     async def _launch_browser(self):
         """최적화된 브라우저 설정"""
         current_os = platform.system()
-        print(f"운영체제 감지: {current_os}")
+        logger.debug(f"운영체제 감지: {current_os}")
 
         # 공통 최적화 옵션
         common_args = [
@@ -134,7 +135,7 @@ class PatchNoteCrawler:
 
         if current_os == "Linux":
             try:
-                print("리눅스 환경: Firefox 브라우저 사용")
+                logger.info("리눅스 환경: Firefox 브라우저 사용")
                 browser = await self._playwright.firefox.launch(
                     headless=True,
                     firefox_user_prefs={
@@ -145,13 +146,13 @@ class PatchNoteCrawler:
                     },
                 )
             except Exception as e:
-                print(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
+                logger.warning(f"Firefox 실행 실패, Chromium으로 대체 시도: {e}")
                 browser = await self._playwright.chromium.launch(
                     headless=True,
                     args=common_args,
                 )
         else:
-            print(f"{current_os} 환경: Chromium 브라우저 사용")
+            logger.info(f"{current_os} 환경: Chromium 브라우저 사용")
             browser = await self._playwright.chromium.launch(
                 headless=True,
                 args=common_args,
@@ -168,13 +169,13 @@ class PatchNoteCrawler:
                       False이면 until_version이 보일 때까지만 클릭 (증분 업데이트 시 사용)
             until_version: 증분 크롤링 시 기준 버전 (이 버전이 보이면 중단)
         """
-        print(f"페이지 로딩 중: {self.base_url}...")
+        logger.info(f"페이지 로딩 중: {self.base_url}...")
         try:
             await page.goto(self.base_url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_selector("h4.article-title", timeout=30000)
-            print("페이지 초기 로드 완료.")
+            logger.debug("페이지 초기 로드 완료.")
         except Exception as e:
-            print(f"페이지 로드 중 타임아웃: {e}")
+            logger.warning(f"페이지 로드 중 타임아웃: {e}")
             # 타임아웃이어도 이미 로드된 콘텐츠로 진행
 
         # 더보기 버튼 클릭하여 추가 패치 로드
@@ -237,7 +238,7 @@ class PatchNoteCrawler:
         # 증분 모드: 초기 로드된 페이지에서 이미 기준 버전이 보이면 더보기 불필요
         if not load_all and until_version:
             if await self._is_version_visible(page, until_version):
-                print(f"기준 버전 {until_version}이 이미 페이지에 존재 — 더보기 클릭 불필요.")
+                logger.debug(f"기준 버전 {until_version}이 이미 페이지에 존재 — 더보기 클릭 불필요.")
                 return
 
         for _ in range(max_clicks):
@@ -248,13 +249,13 @@ class PatchNoteCrawler:
                     candidate = page.locator(selector).first
                     if await candidate.is_visible(timeout=2000):
                         btn = candidate
-                        print(f"더보기 버튼 발견: '{selector}'")
+                        logger.debug(f"더보기 버튼 발견: '{selector}'")
                         break
                 except Exception:
                     continue
 
             if btn is None:
-                print(f"더보기 버튼 없음 — 총 {click_count}회 클릭 완료.")
+                logger.debug(f"더보기 버튼 없음 — 총 {click_count}회 클릭 완료.")
                 break
 
             # 현재 기사 수 기록 → 클릭 후 새 기사가 로드됐는지 확인
@@ -265,7 +266,7 @@ class PatchNoteCrawler:
                 await btn.click()
                 click_count += 1
             except Exception as e:
-                print(f"더보기 버튼 클릭 실패: {e}")
+                logger.warning(f"더보기 버튼 클릭 실패: {e}")
                 break
 
             # 새 콘텐츠가 로드될 때까지 대기 (최대 5초)
@@ -275,16 +276,16 @@ class PatchNoteCrawler:
                     timeout=5000,
                 )
                 after_count = await page.locator("h4.article-title").count()
-                print(f"더보기 클릭 {click_count}회: {before_count} → {after_count}개 기사")
+                logger.debug(f"더보기 클릭 {click_count}회: {before_count} → {after_count}개 기사")
             except Exception:
                 # 더 이상 새 콘텐츠가 없으면 종료
-                print(f"더 이상 로드할 콘텐츠 없음 ({click_count}회 클릭 완료).")
+                logger.debug(f"더 이상 로드할 콘텐츠 없음 ({click_count}회 클릭 완료).")
                 break
 
             # 증분 모드: 기준 버전이 보이면 더보기 중단
             if not load_all and until_version:
                 if await self._is_version_visible(page, until_version):
-                    print(f"기준 버전 {until_version} 발견 — 더보기 클릭 중단 (총 {click_count}회).")
+                    logger.info(f"기준 버전 {until_version} 발견 — 더보기 클릭 중단 (총 {click_count}회).")
                     break
 
     async def _extract_all_major_versions(self, page) -> list:
@@ -312,9 +313,9 @@ class PatchNoteCrawler:
                         if v not in seen:
                             versions.append(v)
                             seen.add(v)
-                            print(f"메이저 버전 감지: {v}")
+                            logger.debug(f"메이저 버전 감지: {v}")
         except Exception as e:
-            print(f"버전 목록 추출 중 오류: {e}")
+            logger.error(f"버전 목록 추출 중 오류: {e}")
         return versions  # 최신순 (페이지 상단→하단 순서)
 
     async def _extract_major_patches_for_version(self, page, target_version) -> list:
@@ -355,15 +356,14 @@ class PatchNoteCrawler:
                                 "title": patch_title,
                             }
                         )
-                        print(f"✅ 메이저 패치 발견: {target_version} - {patch_title}")
-                        print(f"   URL: {url}")
+                        logger.debug(f"메이저 패치 발견: {target_version} - {patch_title} | URL: {url}")
 
             # 제목순으로 정렬 (Part.1 -> Part.2)
             major_patches.sort(key=lambda p: p["title"])
             return major_patches
 
         except Exception as e:
-            print(f"메이저 패치 추출 중 오류 ({target_version}): {e}")
+            logger.error(f"메이저 패치 추출 중 오류 ({target_version}): {e}")
 
         return []
 
@@ -390,10 +390,10 @@ class PatchNoteCrawler:
             for result in results:
                 if isinstance(result, dict) and result:
                     minor_patches.append(result)
-                    print(f"  - 마이너 패치 발견: {result['version']}")
+                    logger.debug(f"마이너 패치 발견: {result['version']}")
 
         except Exception as e:
-            print(f"마이너 패치 추출 중 오류: {e}")
+            logger.error(f"마이너 패치 추출 중 오류: {e}")
 
         # 오래된 것이 먼저 오도록 역순 반환 (a → b → c 순서)
         return list(reversed(minor_patches))
@@ -435,7 +435,7 @@ async def get_patch_info(load_all: bool = False, until_version: str = None):
                        load_all=True이거나 None이면 무시된다.
     """
     mode_label = "[전체 히스토리]" if load_all else f"[증분: {until_version}까지]" if until_version else "[최근]"
-    print(f"🔄 새로운 패치노트 정보 크롤링... {mode_label}")
+    logger.info(f"새로운 패치노트 정보 크롤링... {mode_label}")
     async with PatchNoteCrawler() as crawler:
         patch_info = await crawler.get_patch_info(load_all=load_all, until_version=until_version)
 

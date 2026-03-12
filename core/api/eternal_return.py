@@ -9,6 +9,7 @@ from datetime import datetime
 from config import Config
 
 from utils.constants import *
+from utils.logger import logger
 
 # from dict_lib import *
 
@@ -28,7 +29,7 @@ async def get_current_player_api() -> int:
                 return player_count
 
             else:
-                print(f"Error: {response.status}")
+                logger.error(f"Steam API error: {response.status}")
                 return None  # URL 접근 실패시 None 반환
 
 
@@ -47,7 +48,7 @@ async def add_header(url: str) -> dict:
                 return response_json  # 디코딩된 URL 반환
 
             else:  # 보통 네트워크 에러임
-                print(f"Error: {response.status}")
+                logger.error(f"ER API error: {response.status}")
                 # 여기서 발생한 에러를 호출한 곳으로 전달하고 함
                 raise aiohttp.ClientResponseError(status=response.status)
 
@@ -76,7 +77,7 @@ async def get_user_num(nickname) -> tuple:
             return 404  # 없는 유저임
 
     except aiohttp.ClientResponseError as e:
-        print(f"Error: code: {e.status}, {e.message}")
+        logger.error(f"ER API error: code: {e.status}, {e.message}")
         return e  # 네트워크 에러처리
 
 
@@ -100,11 +101,11 @@ async def get_current_season() -> dict:
             return
 
         else:
-            print("Error: 'data' key not found in JSON response")
+            logger.error("'data' key not found in JSON response")
             return None
 
     else:
-        print("Error: Failed to fetch response from the API")
+        logger.error("Failed to fetch response from the API")
         return response_json
 
 
@@ -129,11 +130,11 @@ async def get_current_season_name() -> tuple:
             return current_season_data, current_season_name
 
         else:
-            print("Error: Failed to get current season data")
+            logger.error("Failed to get current season data")
             return None
 
     except Exception as e:
-        print(e)
+        logger.error(f"get_current_season_name error: {e}")
         return None
 
 
@@ -151,7 +152,7 @@ async def end_current_season(current_season_data) -> str:
         return last_day
 
     else:
-        print("Error: Failed to get current season data")
+        logger.error("Failed to get current season data (end_current_season)")
         return None
 
 
@@ -188,11 +189,11 @@ async def remain_time(current_season_data) -> list:
             return remaining_time_list
 
         else:
-            print("Error: Failed to get current season data")
+            logger.error("Failed to get current season data (remain_time)")
             return None
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"remain_time error: {e}")
         return None
 
 
@@ -304,7 +305,7 @@ async def get_demigod_rating() -> int:
         return demigod_cut
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"get_demigod_rating error: {e}")
         return None
 
 
@@ -334,7 +335,7 @@ async def get_iternity_rating() -> int:
         return iternity_cut
 
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"get_iternity_rating error: {e}")
         return None
 
 
@@ -379,7 +380,7 @@ async def get_user_recent_games_90d(user_num):
 async def get_route(id):
     url = f"https://open-api.bser.io/v1/weaponRoutes/recommend/{id}"
     response_json = await add_header(url)
-    print(json.dumps(response_json, ensure_ascii=False, indent=2))
+    logger.debug(json.dumps(response_json, ensure_ascii=False, indent=2))
     return response_json
 
 
@@ -399,13 +400,13 @@ async def main():
     except:
         pass
     finally:
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+        logger.debug(json.dumps(data, ensure_ascii=False, indent=2))
         pass
 
     end_time = time.perf_counter()  # 종료 시간 기록
     total_time = end_time - start_time  # 전체 작업 시간 계산
     rounded_time = round(total_time, 3)
-    print(f"Total time taken: {rounded_time} seconds")  # 전체 작업 시간 출력
+    logger.debug(f"Total time taken: {rounded_time} seconds")
 
 
 if __name__ == "__main__":

@@ -1,11 +1,13 @@
 import aiohttp
 import discord
+from datetime import datetime
 from discord.ext import commands
 from discord import app_commands
 import core.api.eternal_return as ER
 import core.crawlers.statistics as gg
 from utils.constants import char_english, weapon_english, char_weapons
 from utils.helpers import *
+from utils.logger import logger
 from database.connection import *
 from config import Config
 
@@ -435,10 +437,9 @@ class game_info(commands.Cog):
 
         await interaction.followup.send(embed=embed, view=view)
 
-        print(f"[{current_time()}] Success getRecentPatchNote from DB with dropdown")
-        print(f"Total patches available: {len(all_patches)}")
-        print(f"Latest: {latest_patch['major_version']} ({latest_patch['major_date']})")
-        print_user_server(interaction)
+        logger.debug(f"Total patches available: {len(all_patches)}")
+        logger.debug(f"Latest: {latest_patch['major_version']} ({latest_patch['major_date']})")
+        print_user_server(interaction, "Success getRecentPatchNote from DB with dropdown")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㄷㅈ", description="현재 스팀 동접자 수를 확인합니다.")
@@ -446,7 +447,7 @@ class game_info(commands.Cog):
         """동접 확인 함수"""
 
         current_unix_time = int(time.time())
-        now = current_time()
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         in_game_user = await ER.get_current_player_api()
 
         conn, c = connect_DB()
@@ -487,8 +488,7 @@ class game_info(commands.Cog):
         embed.set_thumbnail(url="attachment://leniticon.png")
         await interaction.response.send_message(file=file, embed=embed)
 
-        print(f"[{current_time()}] Success getInGameUser {in_game_user} and save on DB")
-        print_user_server(interaction)
+        print_user_server(interaction, f"Success getInGameUser {in_game_user} and save on DB")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(
@@ -515,8 +515,7 @@ class game_info(commands.Cog):
         )
 
         await interaction.response.send_message(embed=embed)
-        print(f"[{current_time()}] Success getSeasonRemaining")
-        print_user_server(interaction)
+        print_user_server(interaction, "Success getSeasonRemaining")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㄷㅁ", description="현재 데미갓 MMR 컷을 확인합니다.")
@@ -529,8 +528,7 @@ class game_info(commands.Cog):
         else:
             await interaction.response.send_message(f"> 아직 데미갓 유저가 없습니다.")
 
-        print(f"[{current_time()}] Success check_demigod_rating {rating}")
-        print_user_server(interaction)
+        print_user_server(interaction, f"Success check_demigod_rating {rating}")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅇㅌ", description="현재 이터니티 MMR 컷을 확인합니다.")
@@ -542,8 +540,7 @@ class game_info(commands.Cog):
             await interaction.response.send_message(f"> 이터니티 컷 : **{rating}** 점")
         else:
             await interaction.response.send_message(f"> 아직 이터니티 유저가 없습니다.")
-        print(f"[{current_time()}] Success check_iternity_rating {rating}")
-        print_user_server(interaction)
+        print_user_server(interaction, f"Success check_iternity_rating {rating}")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(
@@ -616,8 +613,7 @@ class game_info(commands.Cog):
         embeds = [embed for embed, file in files_and_embeds]
         await interaction.response.send_message(files=files, embeds=embeds)
 
-        print(f"[{current_time()}] Success get user info {name}")
-        print_user_server(interaction)
+        print_user_server(interaction, f"Success get user info {name}")
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅌㄱ", description="캐릭터 통계를 가져옵니다.")
@@ -655,7 +651,7 @@ class game_info(commands.Cog):
                 )
                 return
 
-            print(f"[{current_time()}] 통계 크롤링 시작: {weapon} {character}")
+            logger.info(f"통계 크롤링 시작: {weapon} {character}")
 
             # 크롤링 수행 (시간이 오래 걸림)
             s_dict = await gg.dakgg_crawler(weapon_E, character_E)
@@ -695,28 +691,22 @@ class game_info(commands.Cog):
             # defer() 사용 후에는 followup.send()로 응답
             await interaction.followup.send(file=file, embed=embed)
 
-            print(
-                f"[{current_time()}] Success get character statistics {weapon} {character}"
-            )
-            print_user_server(interaction)
+            print_user_server(interaction, f"Success get character statistics {weapon} {character}")
             await logging_function(self.bot, interaction)
 
         except KeyError as e:
-            print(f"[{current_time()}] KeyError in character_statistics: {e}")
+            logger.error(f"KeyError in character_statistics: {e}")
             await interaction.followup.send(
                 f"❌ 통계 데이터를 찾을 수 없습니다. 필수 통계 항목이 누락되었습니다: {e}",
                 ephemeral=True,
             )
         except FileNotFoundError as e:
-            print(f"[{current_time()}] FileNotFoundError in character_statistics: {e}")
+            logger.error(f"FileNotFoundError in character_statistics: {e}")
             await interaction.followup.send(
                 f"❌ 캐릭터 이미지 파일을 찾을 수 없습니다.", ephemeral=True
             )
         except Exception as e:
-            print(f"[{current_time()}] Error in character_statistics: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception(f"Error in character_statistics: {e}")
             await interaction.followup.send(
                 f"❌ 통계를 가져오는 데 실패했습니다.\n오류: {str(e)}", ephemeral=True
             )

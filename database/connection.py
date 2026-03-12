@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta
 import json
 from config import Config
+from utils.logger import logger
 
 
 def connect_DB():
@@ -44,7 +45,7 @@ def create_patch_table(c):
                 str_updated_at TEXT NOT NULL
             )"""
         )
-        print("패치노트 테이블이 생성되었습니다.")
+        logger.info("패치노트 테이블이 생성되었습니다.")
 
     # updated_at 컬럼을 index로 설정
     c.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON patch_notes (updated_at)")
@@ -73,7 +74,7 @@ def insert_patch_data(c, patch_info):
     minor_patch_data = patch_info.get("minor_patch_data", [])
 
     if not major_version:
-        print("메이저 패치 버전 정보가 없습니다.")
+        logger.warning("메이저 패치 버전 정보가 없습니다.")
         return
 
     # JSON 문자열로 변환
@@ -106,11 +107,11 @@ def insert_patch_data(c, patch_info):
                     major_version,
                 ),
             )
-            print(f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})")
+            logger.info(f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})")
             for part in major_patches:
-                print(f"  - {part['title']}")
+                logger.debug(f"  - {part['title']}")
         else:
-            print(f"패치노트 버전 {major_version}은(는) 이미 최신입니다.")
+            logger.debug(f"패치노트 버전 {major_version}은(는) 이미 최신입니다.")
     else:
         # 새로운 버전이면 삽입
         c.execute(
@@ -126,9 +127,9 @@ def insert_patch_data(c, patch_info):
                 current_str_time,
             ),
         )
-        print(f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})")
+        logger.info(f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})")
         for part in major_patches:
-            print(f"  - {part['title']}")
+            logger.debug(f"  - {part['title']}")
 
 
 def get_latest_patch_data(c):
@@ -331,7 +332,7 @@ async def get_data():
 
     c.close()
     conn.close()
-    print(data_list)
+    logger.debug(f"get_data() result: {data_list}")
     return data_list
 
 
@@ -386,28 +387,28 @@ async def save_patch_notes_to_db(force_full: bool = False):
 
         if force_full:
             # 전체 크롤링 모드: 더보기를 끝까지 눌러 전체 히스토리 수집
-            print("전체 크롤링 모드 — 더보기를 끝까지 눌러 전체 패치 히스토리를 수집합니다...")
+            logger.info("전체 크롤링 모드 — 더보기를 끝까지 눌러 전체 패치 히스토리를 수집합니다...")
             crawl_result = await get_patchnote(load_all=True)
         elif existing_count == 0:
             # DB가 비어있으면 최초 전체 수집
-            print("DB가 비어있습니다. 전체 패치 히스토리를 수집합니다 (더보기 끝까지 클릭)...")
+            logger.info("DB가 비어있습니다. 전체 패치 히스토리를 수집합니다 (더보기 끝까지 클릭)...")
             crawl_result = await get_patchnote(load_all=True)
         else:
             # 증분 모드: 최신 저장 버전까지만 더보기를 클릭하여 그 이후 버전들만 수집
-            print(
+            logger.info(
                 f"증분 크롤링 모드 — DB 최신 버전: {latest_stored_version}. "
                 f"그 이후 버전들을 확인합니다..."
             )
             crawl_result = await get_patchnote(load_all=False, until_version=latest_stored_version)
 
         if not crawl_result:
-            print("패치노트 크롤링에 실패했습니다.")
+            logger.error("패치노트 크롤링에 실패했습니다.")
             return False
 
         # 크롤러가 반환한 버전 목록 처리
         versions = crawl_result.get("versions", [])
         if not versions:
-            print("크롤링된 패치노트 버전 정보가 없습니다.")
+            logger.warning("크롤링된 패치노트 버전 정보가 없습니다.")
             return False
 
         conn, c = connect_DB()
@@ -420,11 +421,11 @@ async def save_patch_notes_to_db(force_full: bool = False):
 
         c.close()
         conn.close()
-        print(f"패치노트 데이터 저장 완료 (처리한 버전 수: {saved_count}개)")
+        logger.info(f"패치노트 데이터 저장 완료 (처리한 버전 수: {saved_count}개)")
         return True
 
     except Exception as e:
-        print(f"패치노트 저장 중 오류 발생: {e}")
+        logger.error(f"패치노트 저장 중 오류 발생: {e}")
         return False
 
 
@@ -442,7 +443,7 @@ async def get_patch_notes_from_db():
         return patch_data
 
     except Exception as e:
-        print(f"패치노트 조회 중 오류 발생: {e}")
+        logger.error(f"패치노트 조회 중 오류 발생: {e}")
         return None
 
 
