@@ -94,6 +94,7 @@ char_code = {
     "Henry": 83,
     "Blair": 84,
     "Mirka": 85,
+    "Fenrir": 86,
 }
 
 char_korean = {
@@ -182,6 +183,7 @@ char_korean = {
     "Henry": "헨리",
     "Blair": "블레어",
     "Mirka": "미르카",
+    "Fenrir": "펜리르",
 }
 
 char_english = {
@@ -270,6 +272,7 @@ char_english = {
     "헨리": "Henry",
     "블레어": "Blair",
     "미르카": "Mirka",
+    "펜리르": "Fenrir",
 }
 
 char_weapons = {
@@ -358,6 +361,7 @@ char_weapons = {
     "헨리": ["암기"],
     "블레어": ["쌍검"],
     "미르카": ["망치"],
+    "펜리르": ["글러브"],
 }
 
 
