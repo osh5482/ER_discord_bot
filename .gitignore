@@ -218,11 +218,14 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-#tempfile
+# tempfile
 tempCodeRunnerFile.py
 
 # DB file
 *.db
+
+# .vscode folder
+.vscode/*.*
 
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,python,visualstudiocode
