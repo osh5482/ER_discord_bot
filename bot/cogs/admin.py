@@ -56,7 +56,8 @@ class admin(commands.Cog):
         print(f"[{current_time()}] 관리자가 패치노트 새로고침을 요청했습니다.")
 
         try:
-            success = await save_patch_notes_to_db()
+            # 수동 새로고침은 전체 크롤링 모드로 실행 (모든 과거 패치 포함)
+            success = await save_patch_notes_to_db(force_full=True)
 
             if success:
                 await interaction.followup.send(

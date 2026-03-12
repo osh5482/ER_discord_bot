@@ -338,11 +338,17 @@ async def get_iternity_rating() -> int:
         return None
 
 
-async def get_patchnote() -> dict:
-    """최적화된 패치노트 정보 가져오기 함수"""
+async def get_patchnote(load_all: bool = False, until_version: str = None) -> dict:
+    """패치노트 정보 가져오기 함수
+
+    Args:
+        load_all: True이면 더보기를 끝까지 눌러 전체 히스토리를 수집한다.
+        until_version: 증분 크롤링 시 기준 버전. 이 버전이 보이면 더보기 중단.
+                       load_all=True이거나 None이면 무시된다.
+    """
     from core.crawlers.patch_notes import get_patch_info
 
-    return await get_patch_info()
+    return await get_patch_info(load_all=load_all, until_version=until_version)
 
 
 async def get_user_recent_games_10(user_num, next=None):

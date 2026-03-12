@@ -54,13 +54,21 @@ def create_patch_table(c):
 
 
 def insert_patch_data(c, patch_info):
-    """패치노트 데이터 저장 함수 - 다중 파트 지원"""
+    """패치노트 데이터 저장 함수 - 다중 파트 지원
+
+    patch_info 구조:
+    {
+        "major_version": "10.4",     # 버전 식별자
+        "major_date": "2024.03.12",  # 메이저 패치 날짜
+        "major_patches": [...],      # 메이저 패치 파트 리스트
+        "minor_patch_data": [...]    # 마이너 패치 리스트
+    }
+    """
     current_unix_time = int(time.time())
     current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    major_version = patch_info.get("major_patch_version")
-    major_date = patch_info.get("major_patch_date")
-    # 크롤러에서 직접 받은 major_patches 리스트 사용
+    major_version = patch_info.get("major_version")
+    major_date = patch_info.get("major_date")
     major_patches = patch_info.get("major_patches", [])
     minor_patch_data = patch_info.get("minor_patch_data", [])
 
@@ -72,20 +80,21 @@ def insert_patch_data(c, patch_info):
     major_patches_json = json.dumps(major_patches, ensure_ascii=False)
     minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
 
-    # 기존 버전이 존재하는지 확인
+    # 기존 버전이 존재하는지 확인 (minor_patches도 함께 조회)
     c.execute(
-        "SELECT id, major_patches FROM patch_notes WHERE major_version = ?",
+        "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = ?",
         (major_version,),
     )
     existing_row = c.fetchone()
 
     if existing_row:
-        # 기존 데이터와 다를 경우에만 업데이트하여 불필요한 DB 쓰기 방지
-        _existing_id, existing_major_patches_json = existing_row
-        if existing_major_patches_json != major_patches_json:
+        # 메이저 또는 마이너 패치 중 하나라도 변경됐을 때만 업데이트
+        _existing_id, existing_major_patches_json, existing_minor_patches_json = existing_row
+        if (existing_major_patches_json != major_patches_json
+                or existing_minor_patches_json != minor_patches_json):
             c.execute(
-                """UPDATE patch_notes 
-                   SET major_date = ?, major_patches = ?, minor_patches = ?, 
+                """UPDATE patch_notes
+                   SET major_date = ?, major_patches = ?, minor_patches = ?,
                        updated_at = ?, str_updated_at = ?
                    WHERE major_version = ?""",
                 (
@@ -98,7 +107,6 @@ def insert_patch_data(c, patch_info):
                 ),
             )
             print(f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})")
-            # 여러 파트의 제목을 모두 표시
             for part in major_patches:
                 print(f"  - {part['title']}")
         else:
@@ -106,8 +114,8 @@ def insert_patch_data(c, patch_info):
     else:
         # 새로운 버전이면 삽입
         c.execute(
-            """INSERT INTO patch_notes 
-               (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at) 
+            """INSERT INTO patch_notes
+               (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 major_version,
@@ -119,7 +127,6 @@ def insert_patch_data(c, patch_info):
             ),
         )
         print(f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})")
-        # 여러 파트의 제목을 모두 표시
         for part in major_patches:
             print(f"  - {part['title']}")
 
@@ -328,25 +335,93 @@ async def get_data():
     return data_list
 
 
-async def save_patch_notes_to_db():
-    """패치노트를 크롤링해서 DB에 저장하는 함수"""
+def _get_latest_stored_version(c) -> str:
+    """DB에 저장된 버전 중 가장 최신 버전 문자열을 반환한다.
+
+    버전 비교는 숫자 기반 정렬로 수행한다 (예: "10.1" > "9.4").
+
+    Returns:
+        str: 가장 최신 버전 문자열. DB가 비어있으면 None.
+    """
+    c.execute("SELECT major_version FROM patch_notes")
+    rows = c.fetchall()
+    if not rows:
+        return None
+
+    def version_key(v):
+        try:
+            return tuple(int(x) for x in v.split("."))
+        except (ValueError, AttributeError):
+            return (0, 0)
+
+    versions = [row[0] for row in rows]
+    return max(versions, key=version_key)
+
+
+async def save_patch_notes_to_db(force_full: bool = False):
+    """패치노트를 크롤링해서 DB에 저장하는 함수.
+
+    동작 모드:
+    - force_full=True (/ㅍㄴ새로고침 명령어 사용 시):
+        더보기를 끝까지 눌러 전체 패치 히스토리를 수집한 뒤 DB와 비교하여 저장한다.
+    - force_full=False (봇 시작 시 / 자동 주기 크롤링 시):
+        DB에 저장된 가장 최신 버전을 확인하고, 그 버전이 페이지에 나타날 때까지만
+        더보기를 클릭하여 새로운 버전들만 증분 저장한다.
+        DB가 비어있는 경우에는 전체 히스토리를 수집한다.
+
+    Args:
+        force_full: True이면 전체 크롤링 모드, False이면 증분 크롤링 모드.
+    """
     try:
         from core.api.eternal_return import get_patchnote
 
-        print("패치노트 크롤링을 시작합니다...")
-        patch_info = await get_patchnote()
+        # DB 상태 확인 (저장된 버전 수 및 최신 버전 조회)
+        conn_check, c_check = connect_DB()
+        create_patch_table(c_check)
+        c_check.execute("SELECT COUNT(*) FROM patch_notes")
+        existing_count = c_check.fetchone()[0]
+        latest_stored_version = _get_latest_stored_version(c_check)
+        c_check.close()
+        conn_check.close()
 
-        if patch_info:
-            conn, c = connect_DB()
-            create_patch_table(c)
-            insert_patch_data(c, patch_info)
-            c.close()
-            conn.close()
-            print("패치노트 데이터가 성공적으로 저장되었습니다.")
-            return True
+        if force_full:
+            # 전체 크롤링 모드: 더보기를 끝까지 눌러 전체 히스토리 수집
+            print("전체 크롤링 모드 — 더보기를 끝까지 눌러 전체 패치 히스토리를 수집합니다...")
+            crawl_result = await get_patchnote(load_all=True)
+        elif existing_count == 0:
+            # DB가 비어있으면 최초 전체 수집
+            print("DB가 비어있습니다. 전체 패치 히스토리를 수집합니다 (더보기 끝까지 클릭)...")
+            crawl_result = await get_patchnote(load_all=True)
         else:
+            # 증분 모드: 최신 저장 버전까지만 더보기를 클릭하여 그 이후 버전들만 수집
+            print(
+                f"증분 크롤링 모드 — DB 최신 버전: {latest_stored_version}. "
+                f"그 이후 버전들을 확인합니다..."
+            )
+            crawl_result = await get_patchnote(load_all=False, until_version=latest_stored_version)
+
+        if not crawl_result:
             print("패치노트 크롤링에 실패했습니다.")
             return False
+
+        # 크롤러가 반환한 버전 목록 처리
+        versions = crawl_result.get("versions", [])
+        if not versions:
+            print("크롤링된 패치노트 버전 정보가 없습니다.")
+            return False
+
+        conn, c = connect_DB()
+        create_patch_table(c)
+
+        saved_count = 0
+        for version_data in versions:
+            insert_patch_data(c, version_data)
+            saved_count += 1
+
+        c.close()
+        conn.close()
+        print(f"패치노트 데이터 저장 완료 (처리한 버전 수: {saved_count}개)")
+        return True
 
     except Exception as e:
         print(f"패치노트 저장 중 오류 발생: {e}")
