@@ -181,30 +181,44 @@ class PatchNoteCrawler:
         # 더보기 버튼 클릭하여 추가 패치 로드
         await self._click_load_more(page, load_all=load_all, until_version=until_version)
 
-    async def _is_version_visible(self, page, version: str) -> bool:
-        """특정 버전의 메이저 패치노트 제목이 페이지에 보이는지 확인한다.
+    async def _is_older_version_visible(self, page, version: str) -> bool:
+        """주어진 버전보다 오래된 메이저 패치노트 제목이 페이지에 보이는지 확인한다.
+
+        증분 크롤링 시 더보기 중단 기준으로 사용한다.
+        예: version="10.5"이면, 10.4 이하의 메이저 패치노트가 페이지에 보이면 True 반환.
+        이를 통해 10.5의 모든 파트(Part.1, Part.2 등)가 로드된 후 중단되도록 보장한다.
 
         Args:
             page: Playwright 페이지 객체
-            version: 확인할 버전 문자열 (예: "10.1")
+            version: 기준 버전 문자열 (예: "10.5")
 
         Returns:
-            bool: 해당 버전이 페이지에 존재하면 True
+            bool: 기준 버전보다 오래된 메이저 패치노트가 존재하면 True
         """
+        def version_key(v):
+            try:
+                return tuple(int(x) for x in v.split("."))
+            except (ValueError, AttributeError):
+                return (0, 0)
+
+        target_key = version_key(version)
+
         try:
             article_elements = await page.locator("h4.article-title").all()
             for el in article_elements:
                 title_text = await el.text_content()
                 if "PATCH NOTES" not in title_text and "패치노트" not in title_text:
                     continue
-                # 해당 버전이 정확히 일치하고 마이너(알파벳 접미사) 버전이 아닌 것만 확인
-                version_exact = re.search(
-                    rf"(?<!\d){re.escape(version)}(?!\d)", title_text
+                # 마이너 버전(10.5a 등) 제외
+                if re.search(r"\d+\.\d+(?:\.\d+)?[a-z]", title_text, re.IGNORECASE):
+                    continue
+                v_match = re.search(
+                    r"(?<!\d)(\d+\.\d+(?:\.\d+)?)\s*(?:PATCH NOTES|패치노트)",
+                    title_text,
+                    re.IGNORECASE,
                 )
-                is_minor = re.search(
-                    rf"(?<!\d){re.escape(version)}[a-z]", title_text, re.IGNORECASE
-                )
-                if version_exact and not is_minor:
+                if v_match and version_key(v_match.group(1)) < target_key:
+                    logger.debug(f"이전 버전 감지: {v_match.group(1)} < {version}")
                     return True
         except Exception:
             pass
@@ -235,10 +249,11 @@ class PatchNoteCrawler:
         max_clicks = 999  # 항상 충분히 크게 설정 (실제 중단 조건은 아래 로직으로 제어)
         click_count = 0
 
-        # 증분 모드: 초기 로드된 페이지에서 이미 기준 버전이 보이면 더보기 불필요
+        # 증분 모드: 초기 로드된 페이지에서 이미 이전 버전이 보이면 더보기 불필요
+        # (until_version의 모든 파트가 로드됐음을 이전 버전 존재로 판단)
         if not load_all and until_version:
-            if await self._is_version_visible(page, until_version):
-                logger.debug(f"기준 버전 {until_version}이 이미 페이지에 존재 — 더보기 클릭 불필요.")
+            if await self._is_older_version_visible(page, until_version):
+                logger.debug(f"기준 버전 {until_version}보다 오래된 버전이 이미 존재 — 더보기 클릭 불필요.")
                 return
 
         for _ in range(max_clicks):
@@ -282,10 +297,11 @@ class PatchNoteCrawler:
                 logger.debug(f"더 이상 로드할 콘텐츠 없음 ({click_count}회 클릭 완료).")
                 break
 
-            # 증분 모드: 기준 버전이 보이면 더보기 중단
+            # 증분 모드: 기준 버전보다 오래된 버전이 보이면 더보기 중단
+            # (until_version의 모든 파트가 확실히 로드됐음을 보장)
             if not load_all and until_version:
-                if await self._is_version_visible(page, until_version):
-                    logger.info(f"기준 버전 {until_version} 발견 — 더보기 클릭 중단 (총 {click_count}회).")
+                if await self._is_older_version_visible(page, until_version):
+                    logger.info(f"기준 버전 {until_version}보다 오래된 버전 발견 — 더보기 클릭 중단 (총 {click_count}회).")
                     break
 
     async def _extract_all_major_versions(self, page) -> list:
