@@ -43,7 +43,9 @@ class PatchNoteCrawler:
         if self._playwright:
             await self._playwright.stop()
 
-    async def get_patch_info(self, load_all: bool = False, until_version: str = None) -> dict:
+    async def get_patch_info(
+        self, load_all: bool = False, until_version: str = None
+    ) -> dict:
         """페이지에 보이는 모든 메이저 버전의 패치 정보 수집 (다중 버전, 다중 파트 지원)
 
         Args:
@@ -179,7 +181,9 @@ class PatchNoteCrawler:
             # 타임아웃이어도 이미 로드된 콘텐츠로 진행
 
         # 더보기 버튼 클릭하여 추가 패치 로드
-        await self._click_load_more(page, load_all=load_all, until_version=until_version)
+        await self._click_load_more(
+            page, load_all=load_all, until_version=until_version
+        )
 
     async def _is_older_version_visible(self, page, version: str) -> bool:
         """주어진 버전보다 오래된 메이저 패치노트 제목이 페이지에 보이는지 확인한다.
@@ -195,6 +199,7 @@ class PatchNoteCrawler:
         Returns:
             bool: 기준 버전보다 오래된 메이저 패치노트가 존재하면 True
         """
+
         def version_key(v):
             try:
                 return tuple(int(x) for x in v.split("."))
@@ -224,7 +229,9 @@ class PatchNoteCrawler:
             pass
         return False
 
-    async def _click_load_more(self, page, load_all: bool = False, until_version: str = None):
+    async def _click_load_more(
+        self, page, load_all: bool = False, until_version: str = None
+    ):
         """더보기 버튼을 클릭하여 추가 패치 목록을 로드한다.
 
         Args:
@@ -253,7 +260,9 @@ class PatchNoteCrawler:
         # (until_version의 모든 파트가 로드됐음을 이전 버전 존재로 판단)
         if not load_all and until_version:
             if await self._is_older_version_visible(page, until_version):
-                logger.debug(f"기준 버전 {until_version}보다 오래된 버전이 이미 존재 — 더보기 클릭 불필요.")
+                logger.debug(
+                    f"기준 버전 {until_version}보다 오래된 버전이 이미 존재 — 더보기 클릭 불필요."
+                )
                 return
 
         for _ in range(max_clicks):
@@ -291,7 +300,9 @@ class PatchNoteCrawler:
                     timeout=5000,
                 )
                 after_count = await page.locator("h4.article-title").count()
-                logger.debug(f"더보기 클릭 {click_count}회: {before_count} → {after_count}개 기사")
+                logger.debug(
+                    f"더보기 클릭 {click_count}회: {before_count} → {after_count}개 기사"
+                )
             except Exception:
                 # 더 이상 새 콘텐츠가 없으면 종료
                 logger.debug(f"더 이상 로드할 콘텐츠 없음 ({click_count}회 클릭 완료).")
@@ -301,7 +312,9 @@ class PatchNoteCrawler:
             # (until_version의 모든 파트가 확실히 로드됐음을 보장)
             if not load_all and until_version:
                 if await self._is_older_version_visible(page, until_version):
-                    logger.info(f"기준 버전 {until_version}보다 오래된 버전 발견 — 더보기 클릭 중단 (총 {click_count}회).")
+                    logger.info(
+                        f"기준 버전 {until_version}보다 오래된 버전 발견 — 더보기 클릭 중단 (총 {click_count}회)."
+                    )
                     break
 
     async def _extract_all_major_versions(self, page) -> list:
@@ -372,7 +385,9 @@ class PatchNoteCrawler:
                                 "title": patch_title,
                             }
                         )
-                        logger.debug(f"메이저 패치 발견: {target_version} - {patch_title} | URL: {url}")
+                        logger.debug(
+                            f"메이저 패치 발견: {target_version} - {patch_title} | URL: {url}"
+                        )
 
             # 제목순으로 정렬 (Part.1 -> Part.2)
             major_patches.sort(key=lambda p: p["title"])
@@ -384,7 +399,7 @@ class PatchNoteCrawler:
         return []
 
     async def _extract_minor_patches(self, page, major_version, major_urls: set):
-        """최���화된 마이너 패치 추출 (메이저 URL set을 받아 중복 방지)"""
+        """최적화된 마이너 패치 추출 (메이저 URL set을 받아 중복 방지)"""
         minor_patches = []
         # (?<!\d) : "1.4a"가 "1.43a" 같은 다른 버전에서 오탐되는 것 방지
         minor_pattern = re.compile(
@@ -450,11 +465,15 @@ async def get_patch_info(load_all: bool = False, until_version: str = None):
         until_version: 증분 크롤링 시 기준 버전. 이 버전이 보이면 더보기 클릭 중단.
                        load_all=True이거나 None이면 무시된다.
     """
-    mode_label = "[전체 히스토리]" if load_all else f"[증분: {until_version}까지]" if until_version else "[최근]"
+    mode_label = (
+        "[전체 히스토리]"
+        if load_all
+        else f"[증분: {until_version}까지]" if until_version else "[최근]"
+    )
     logger.info(f"새로운 패치노트 정보 크롤링... {mode_label}")
     async with PatchNoteCrawler() as crawler:
-        patch_info = await crawler.get_patch_info(load_all=load_all, until_version=until_version)
+        patch_info = await crawler.get_patch_info(
+            load_all=load_all, until_version=until_version
+        )
 
         return patch_info
-
-
