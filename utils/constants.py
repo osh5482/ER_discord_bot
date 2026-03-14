@@ -8,6 +8,37 @@ tiers = {
     "아이언": [(0, 150), (150, 300), (300, 450), (450, 600)],
 }
 
+# 통계 크롤링용 티어 필터 (한글 → dak.gg URL 파라미터)
+tier_filter = {
+    "in 1000": "in1000",
+    "미스릴+": "mithril_plus",
+    "메테오라이트+": "meteorite_plus",
+    "다이아몬드+": "diamond_plus",
+    "플래티넘+": "platinum_plus",
+    "플래티넘": "platinum",
+    "골드": "gold",
+    "실버": "silver",
+    "브론즈": "bronze",
+    "아이언": "iron",
+}
+
+# 역방향 매핑 (dak.gg URL 파라미터 → 한글)
+tier_korean = {v: k for k, v in tier_filter.items()}
+
+# 티어별 커스텀 이모지 ID (dak.gg URL 파라미터 → Discord 이모지 ID)
+tier_emoji_ids = {
+    "in1000": 1481954022469533706,
+    "mithril_plus": 1481953946028343296,
+    "meteorite_plus": 1481953905398120589,
+    "diamond_plus": 1481953890915192872,
+    "platinum_plus": 1481953873282203860,
+    "platinum": 1481953873282203860,
+    "gold": 1481953855389433998,
+    "silver": 1481953841053171763,
+    "bronze": 1481953823890214995,
+    "iron": 1481953795905945632,
+}
+
 char_code = {
     "Jackie": 1,
     "Aya": 2,

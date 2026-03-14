@@ -1,3 +1,4 @@
+import asyncio
 import aiohttp
 import discord
 from datetime import datetime
@@ -5,7 +6,7 @@ from discord.ext import commands
 from discord import app_commands
 import core.api.eternal_return as ER
 import core.crawlers.statistics as gg
-from utils.constants import char_english, weapon_english, char_weapons
+from utils.constants import char_english, weapon_english, char_weapons, tier_filter, tier_korean, tier_emoji_ids
 from utils.helpers import *
 from utils.logger import logger
 from database.connection import *
@@ -197,6 +198,136 @@ class PatchVersionSelect(discord.ui.Select):
         )
 
         await interaction.response.edit_message(embed=embed, view=new_view)
+
+
+def create_stats_embed(s_dict, tier_name, weapon_E, character_E):
+    """통계 데이터로부터 Discord 임베드 생성"""
+    character_name_kr = s_dict["character_name"]
+    weapon_kr = s_dict["weapon"]
+
+    embed = discord.Embed(
+        title=f"{weapon_kr} {character_name_kr}",
+        color=0x00FF00,
+        url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
+    )
+
+    pick_percent = s_dict["픽률"]["value"]
+    win_percent = s_dict["승률"]["value"]
+    get_RP = s_dict["RP 획득"]["value"]
+    pick_rank = s_dict["픽률"]["ranking"]
+    win_rank = s_dict["승률"]["ranking"]
+    get_RP_rank = s_dict["RP 획득"]["ranking"]
+
+    embed.add_field(
+        name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True
+    )
+    embed.add_field(
+        name="승률", value=f"{win_percent}\n{win_rank}", inline=True
+    )
+    embed.add_field(
+        name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
+    )
+    embed.set_footer(text=f"가장 최근 패치의 {tier_name} 7일 통계입니다")
+
+    return embed
+
+
+class StatsTierSelect(discord.ui.Select):
+    """통계 티어 선택 드롭다운 메뉴"""
+
+    def __init__(self, options, tier_data, weapon_E, character_E, code):
+        super().__init__(
+            placeholder="다른 티어의 통계를 확인하세요...",
+            options=options,
+            min_values=1,
+            max_values=1,
+        )
+        self.tier_data = tier_data
+        self.weapon_E = weapon_E
+        self.character_E = character_E
+        self.code = code
+
+    async def callback(self, interaction: discord.Interaction):
+        """드롭다운에서 티어 선택 시 호출"""
+        selected_tier = self.values[0]
+        tier_name = tier_korean.get(selected_tier, selected_tier)
+
+        # 크롤링 데이터 확인
+        if selected_tier not in self.tier_data:
+            # 아직 크롤링 중 - 대기
+            await interaction.response.defer()
+            for _ in range(60):
+                if selected_tier in self.tier_data:
+                    break
+                await asyncio.sleep(1)
+
+        stats = self.tier_data.get(selected_tier)
+
+        if stats is None:
+            # 크롤링 실패
+            error_msg = f"❌ {tier_name} 티어의 통계를 가져오지 못했습니다."
+            if interaction.response.is_done():
+                await interaction.followup.send(error_msg, ephemeral=True)
+            else:
+                await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+
+        # Embed 재생성
+        embed = create_stats_embed(stats, tier_name, self.weapon_E, self.character_E)
+
+        # 캐릭터 이미지 다시 첨부
+        file = discord.File(
+            f"./assets/images/characters/{self.code}_{self.character_E}.png",
+            filename="profile.png",
+        )
+        embed.set_thumbnail(url="attachment://profile.png")
+
+        # 드롭다운 default 업데이트
+        new_view = StatsTierSelectView(
+            self.weapon_E, self.character_E, selected_tier, self.tier_data, self.code
+        )
+
+        if interaction.response.is_done():
+            await interaction.edit_original_response(
+                attachments=[file], embed=embed, view=new_view
+            )
+        else:
+            await interaction.response.edit_message(
+                attachments=[file], embed=embed, view=new_view
+            )
+
+
+class StatsTierSelectView(discord.ui.View):
+    """통계 티어 선택을 위한 드롭다운 메뉴 뷰"""
+
+    def __init__(self, weapon_E, character_E, current_tier, tier_data, code):
+        super().__init__(timeout=300)
+        self.tier_data = tier_data
+
+        # 드롭다운 옵션 생성
+        options = []
+        for tier_name_kr, tier_value in tier_filter.items():
+            # 티어 이모지 이름: _plus 접미사 제거
+            emoji_name = tier_value.replace("_plus", "")
+            emoji_id = tier_emoji_ids.get(tier_value)
+            options.append(
+                discord.SelectOption(
+                    label=tier_name_kr,
+                    value=tier_value,
+                    emoji=discord.PartialEmoji(name=emoji_name, id=emoji_id) if emoji_id else None,
+                    default=(tier_value == current_tier),
+                )
+            )
+
+        self.select_menu = StatsTierSelect(
+            options, tier_data, weapon_E, character_E, code
+        )
+        self.add_item(self.select_menu)
+
+    async def on_timeout(self):
+        """타임아웃 시 모든 컴포넌트 비활성화"""
+        for item in self.children:
+            item.disabled = True
 
 
 def create_patch_embed(patch_info):
@@ -653,33 +784,14 @@ class game_info(commands.Cog):
 
             logger.info(f"통계 크롤링 시작: {weapon} {character}")
 
-            # 크롤링 수행 (시간이 오래 걸림)
+            # 다이아몬드+ 통계 먼저 크롤링 (기본값)
             s_dict = await gg.dakgg_crawler(weapon_E, character_E)
 
+            # 티어별 데이터 저장소 (백그라운드 크롤링과 공유)
+            tier_data = {"diamond_plus": s_dict}
+
             # Embed 생성
-            embed = discord.Embed(
-                title=f"{weapon} {character}",
-                color=0x00FF00,
-                url=f"https://dak.gg/er/characters/{character_E}?weaponType={weapon_E}",
-            )
-
-            pick_percent = s_dict["픽률"]["value"]
-            win_percent = s_dict["승률"]["value"]
-            get_RP = s_dict["RP 획득"]["value"]
-            pick_rank = s_dict["픽률"]["ranking"]
-            win_rank = s_dict["승률"]["ranking"]
-            get_RP_rank = s_dict["RP 획득"]["ranking"]
-
-            embed.add_field(
-                name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True
-            )
-            embed.add_field(
-                name="승률", value=f"{win_percent}\n{win_rank}", inline=True
-            )
-            embed.add_field(
-                name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
-            )
-            embed.set_footer(text="가장 최근 패치의 다이아+ 7일 통계입니다")
+            embed = create_stats_embed(s_dict, "다이아몬드+", weapon_E, character_E)
 
             code = s_dict["code"]
             file = discord.File(
@@ -688,8 +800,18 @@ class game_info(commands.Cog):
             )
             embed.set_thumbnail(url="attachment://profile.png")
 
+            # 티어 선택 드롭다운 View 생성
+            view = StatsTierSelectView(
+                weapon_E, character_E, "diamond_plus", tier_data, code
+            )
+
             # defer() 사용 후에는 followup.send()로 응답
-            await interaction.followup.send(file=file, embed=embed)
+            await interaction.followup.send(file=file, embed=embed, view=view)
+
+            # 백그라운드에서 나머지 티어 크롤링 시작
+            asyncio.create_task(
+                gg.dakgg_crawler_all_tiers(weapon_E, character_E, tier_data)
+            )
 
             print_user_server(interaction, f"Success get character statistics {weapon} {character}")
             await logging_function(self.bot, interaction)

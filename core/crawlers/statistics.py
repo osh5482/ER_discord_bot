@@ -161,13 +161,15 @@ class DakggCrawler:
 
         return browser
 
-    async def crawl_character_stats(self, weapon, character_name):
+    async def crawl_character_stats(self, weapon, character_name, tier=None):
         """
         무기, 캐릭터 이름으로 닥지지 통계 크롤링
 
         Args:
             weapon: 무기 타입 (영문)
             character_name: 캐릭터 이름 (영문)
+            tier: 티어 필터 (dak.gg URL 파라미터, 예: "gold", "diamond_plus")
+                  None이면 기본값(다이아몬드+)
 
         Returns:
             dict: 통계 정보 딕셔너리
@@ -176,6 +178,8 @@ class DakggCrawler:
             Exception: 크롤링 실패 시
         """
         url = f"https://dak.gg/er/characters/{character_name}?weaponType={weapon}"
+        if tier:
+            url += f"&tier={tier}"
 
         try:
             page = await self._context.new_page()
@@ -279,13 +283,15 @@ class DakggCrawler:
             raise
 
 
-async def dakgg_crawler(weapon, character_name):
+async def dakgg_crawler(weapon, character_name, tier=None):
     """
     무기, 캐릭터 이름으로 닥지지 통계 크롤링해오기
 
     Args:
         weapon: 무기 타입 (영문)
         character_name: 캐릭터 이름 (영문)
+        tier: 티어 필터 (dak.gg URL 파라미터, 예: "gold", "diamond_plus")
+              None이면 기본값(다이아몬드+)
 
     Returns:
         dict: 통계 정보 딕셔너리 (각 통계의 value와 ranking 포함)
@@ -294,7 +300,32 @@ async def dakgg_crawler(weapon, character_name):
         Exception: 크롤링 실패 시
     """
     async with DakggCrawler() as crawler:
-        return await crawler.crawl_character_stats(weapon, character_name)
+        return await crawler.crawl_character_stats(weapon, character_name, tier)
+
+
+async def dakgg_crawler_all_tiers(weapon, character_name, tier_data):
+    """
+    모든 티어의 통계를 백그라운드로 크롤링하여 tier_data에 저장
+
+    Args:
+        weapon: 무기 타입 (영문)
+        character_name: 캐릭터 이름 (영문)
+        tier_data: 크롤링 결과를 저장할 딕셔너리 (공유 참조)
+                   이미 크롤링된 티어는 건너뜀
+    """
+    async with DakggCrawler() as crawler:
+        for tier_value in tier_filter.values():
+            if tier_value in tier_data:
+                continue
+            try:
+                data = await crawler.crawl_character_stats(
+                    weapon, character_name, tier_value
+                )
+                tier_data[tier_value] = data
+                logger.info(f"백그라운드 크롤링 완료: {tier_value}")
+            except Exception as e:
+                tier_data[tier_value] = None
+                logger.warning(f"백그라운드 크롤링 실패 ({tier_value}): {e}")
 
 
 async def main():
