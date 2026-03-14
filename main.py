@@ -38,10 +38,21 @@ async def on_ready():
         commands_list = [cmd.name for cmd in bot.tree.get_commands()]
         logger.debug(f"Registered commands: {commands_list}")
 
+        # 글로벌 명령어를 모두 제거 (길드 명령어만 사용)
+        bot.tree.clear_commands(guild=None)
+        await bot.tree.sync()
+        logger.info("Cleared all global commands")
+
+        # 글로벌 명령어를 트리에 다시 등록 (길드 sync용)
+        # clear_commands는 트리에서만 제거하므로, cog의 명령어를 다시 로드
+        for cog_name, cog in bot.cogs.items():
+            for cmd in cog.get_app_commands():
+                bot.tree.add_command(cmd)
+
+        # 각 길드에 즉시 반영
         synced_count = 0
         for guild in bot.guilds:
             try:
-                # 글로벌 명령어를 길드에 복사 후 동기화 (즉시 반영)
                 bot.tree.copy_global_to(guild=guild)
                 synced = await bot.tree.sync(guild=guild)
                 synced_count += 1
