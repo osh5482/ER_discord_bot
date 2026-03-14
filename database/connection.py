@@ -77,10 +77,6 @@ def insert_patch_data(c, patch_info):
         logger.warning("메이저 패치 버전 정보가 없습니다.")
         return
 
-    # JSON 문자열로 변환
-    major_patches_json = json.dumps(major_patches, ensure_ascii=False)
-    minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
-
     # 기존 버전이 존재하는지 확인 (minor_patches도 함께 조회)
     c.execute(
         "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = ?",
@@ -89,8 +85,26 @@ def insert_patch_data(c, patch_info):
     existing_row = c.fetchone()
 
     if existing_row:
-        # 메이저 또는 마이너 패치 중 하나라도 변경됐을 때만 업데이트
+        # 기존 데이터와 URL 기준으로 병합하여 크롤링 누락 시 데이터 손실 방지
         _existing_id, existing_major_patches_json, existing_minor_patches_json = existing_row
+
+        # 메이저 패치 병합: 기존 데이터를 기반으로 새 데이터를 덮어쓰기
+        existing_major = json.loads(existing_major_patches_json) if existing_major_patches_json else []
+        merged_major = {p["url"]: p for p in existing_major}
+        for p in major_patches:
+            merged_major[p["url"]] = p
+        major_patches = sorted(merged_major.values(), key=lambda p: p.get("title", ""))
+
+        # 마이너 패치 병합: 동일하게 URL 기준 병합
+        existing_minor = json.loads(existing_minor_patches_json) if existing_minor_patches_json else []
+        merged_minor = {p["url"]: p for p in existing_minor}
+        for p in minor_patch_data:
+            merged_minor[p["url"]] = p
+        minor_patch_data = sorted(merged_minor.values(), key=lambda p: p.get("version", ""))
+
+        major_patches_json = json.dumps(major_patches, ensure_ascii=False)
+        minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
+
         if (existing_major_patches_json != major_patches_json
                 or existing_minor_patches_json != minor_patches_json):
             c.execute(
@@ -114,6 +128,8 @@ def insert_patch_data(c, patch_info):
             logger.debug(f"패치노트 버전 {major_version}은(는) 이미 최신입니다.")
     else:
         # 새로운 버전이면 삽입
+        major_patches_json = json.dumps(major_patches, ensure_ascii=False)
+        minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
         c.execute(
             """INSERT INTO patch_notes
                (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at)
