@@ -41,6 +41,8 @@ async def on_ready():
         synced_count = 0
         for guild in bot.guilds:
             try:
+                # 글로벌 명령어를 길드에 복사 후 동기화 (즉시 반영)
+                bot.tree.copy_global_to(guild=guild)
                 synced = await bot.tree.sync(guild=guild)
                 synced_count += 1
                 logger.debug(
@@ -68,6 +70,7 @@ async def on_guild_join(guild):
 
     # 새 서버에 명령어 즉시 동기화
     try:
+        bot.tree.copy_global_to(guild=guild)
         await bot.tree.sync(guild=guild)
         logger.info(f"Synced commands to new guild {guild.name} ({guild.id})")
     except Exception as e:
