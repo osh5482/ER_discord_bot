@@ -832,8 +832,8 @@ class game_info(commands.Cog):
     async def character_statistics(
         self, interaction: discord.Interaction, character: str
     ):
-        # 먼저 defer()로 "로딩 중..." 상태 표시 (3초 타임아웃 방지)
-        await interaction.response.defer()
+        # 먼저 defer()로 "로딩 중..." 상태 표시 (본인만 보이도록 ephemeral)
+        await interaction.response.defer(ephemeral=True)
 
         try:
             if character not in char_english:
