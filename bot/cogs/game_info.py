@@ -1,4 +1,5 @@
 import asyncio
+import time
 import aiohttp
 import discord
 from datetime import datetime
@@ -6,11 +7,15 @@ from discord.ext import commands
 from discord import app_commands
 import core.api.eternal_return as ER
 import core.crawlers.statistics as gg
-from utils.constants import char_english, weapon_english, char_weapons, tier_filter, tier_korean, tier_emoji_ids
+from utils.constants import char_english, weapon_korean, tier_filter, tier_korean, tier_emoji_ids, weapon_emoji_ids
 from utils.helpers import *
 from utils.logger import logger
 from database.connection import *
 from config import Config
+
+# 캐릭터 통계 인메모리 캐시: 같은 캐릭터+무기 조합을 5분 내 재조회 시 즉시 응답
+_stats_cache = {}  # key: (weapon, character), value: {"tier_data": dict, "timestamp": float}
+_STATS_CACHE_TTL = 300  # 5분
 
 
 class PatchNoteSelectView(discord.ui.View):
@@ -232,18 +237,68 @@ def create_stats_embed(s_dict, tier_name, weapon_E, character_E):
     return embed
 
 
+class StatsWeaponSelect(discord.ui.Select):
+    """통계 무기 선택 드롭다운 메뉴"""
+
+    def __init__(self, options, tier_data, current_tier, character_E, code):
+        super().__init__(
+            placeholder="다른 무기의 통계를 확인하세요...",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+        self.tier_data = tier_data
+        self.current_tier = current_tier
+        self.character_E = character_E
+        self.code = code
+
+    async def callback(self, interaction: discord.Interaction):
+        """드롭다운에서 무기 선택 시 호출"""
+        selected_weapon = self.values[0]
+        tier_name = tier_korean.get(self.current_tier, self.current_tier)
+
+        # 현재 티어의 무기 데이터에서 선택된 무기 가져오기
+        tier_weapons = self.tier_data.get(self.current_tier)
+        if not tier_weapons or selected_weapon not in tier_weapons:
+            error_msg = f"❌ 해당 무기의 통계를 가져오지 못했습니다."
+            await interaction.response.send_message(error_msg, ephemeral=True)
+            return
+
+        stats = tier_weapons[selected_weapon]
+
+        embed = create_stats_embed(stats, tier_name, selected_weapon, self.character_E)
+
+        file = discord.File(
+            f"./assets/images/characters/{self.code}_{self.character_E}.png",
+            filename="profile.png",
+        )
+        embed.set_thumbnail(url="attachment://profile.png")
+
+        # 전체 뷰 재생성 (무기 default 변경)
+        new_view = StatsSelectView(
+            self.character_E, selected_weapon, self.current_tier,
+            self.tier_data, self.code
+        )
+
+        await interaction.response.edit_message(
+            attachments=[file], embed=embed, view=new_view
+        )
+
+
 class StatsTierSelect(discord.ui.Select):
     """통계 티어 선택 드롭다운 메뉴"""
 
-    def __init__(self, options, tier_data, weapon_E, character_E, code):
+    def __init__(self, options, tier_data, current_weapon, character_E, code):
         super().__init__(
             placeholder="다른 티어의 통계를 확인하세요...",
             options=options,
             min_values=1,
             max_values=1,
+            row=1,
         )
         self.tier_data = tier_data
-        self.weapon_E = weapon_E
+        self.current_weapon = current_weapon
         self.character_E = character_E
         self.code = code
 
@@ -261,10 +316,9 @@ class StatsTierSelect(discord.ui.Select):
                     break
                 await asyncio.sleep(1)
 
-        stats = self.tier_data.get(selected_tier)
+        tier_weapons = self.tier_data.get(selected_tier)
 
-        if stats is None:
-            # 크롤링 실패
+        if tier_weapons is None:
             error_msg = f"❌ {tier_name} 티어의 통계를 가져오지 못했습니다."
             if interaction.response.is_done():
                 await interaction.followup.send(error_msg, ephemeral=True)
@@ -272,19 +326,24 @@ class StatsTierSelect(discord.ui.Select):
                 await interaction.response.send_message(error_msg, ephemeral=True)
             return
 
-        # Embed 재생성
-        embed = create_stats_embed(stats, tier_name, self.weapon_E, self.character_E)
+        # 현재 선택된 무기의 통계 가져오기
+        stats = tier_weapons.get(self.current_weapon)
+        if not stats:
+            # 현재 무기가 해당 티어에 없으면 가장 인기 무기 사용
+            self.current_weapon = next(iter(tier_weapons))
+            stats = tier_weapons[self.current_weapon]
 
-        # 캐릭터 이미지 다시 첨부
+        embed = create_stats_embed(stats, tier_name, self.current_weapon, self.character_E)
+
         file = discord.File(
             f"./assets/images/characters/{self.code}_{self.character_E}.png",
             filename="profile.png",
         )
         embed.set_thumbnail(url="attachment://profile.png")
 
-        # 드롭다운 default 업데이트
-        new_view = StatsTierSelectView(
-            self.weapon_E, self.character_E, selected_tier, self.tier_data, self.code
+        new_view = StatsSelectView(
+            self.character_E, self.current_weapon, selected_tier,
+            self.tier_data, self.code
         )
 
         if interaction.response.is_done():
@@ -297,20 +356,42 @@ class StatsTierSelect(discord.ui.Select):
             )
 
 
-class StatsTierSelectView(discord.ui.View):
-    """통계 티어 선택을 위한 드롭다운 메뉴 뷰"""
+class StatsSelectView(discord.ui.View):
+    """무기 + 티어 선택을 위한 드롭다운 메뉴 뷰"""
 
-    def __init__(self, weapon_E, character_E, current_tier, tier_data, code):
+    def __init__(self, character_E, current_weapon, current_tier, tier_data, code):
         super().__init__(timeout=300)
         self.tier_data = tier_data
 
-        # 드롭다운 옵션 생성
-        options = []
+        # 무기 드롭다운 옵션 생성 (현재 티어의 무기 목록에서)
+        current_tier_data = tier_data.get(current_tier, {})
+        weapon_keys = list(current_tier_data.keys()) if current_tier_data else []
+
+        # 무기가 2개 이상일 때만 무기 드롭다운 추가
+        if len(weapon_keys) >= 2:
+            weapon_options = []
+            for weapon_key in weapon_keys:
+                weapon_kr = weapon_korean.get(weapon_key, weapon_key)
+                emoji_id = weapon_emoji_ids.get(weapon_key)
+                weapon_options.append(
+                    discord.SelectOption(
+                        label=weapon_kr,
+                        value=weapon_key,
+                        emoji=discord.PartialEmoji(name=weapon_key, id=emoji_id) if emoji_id else None,
+                        default=(weapon_key == current_weapon),
+                    )
+                )
+
+            self.add_item(StatsWeaponSelect(
+                weapon_options, tier_data, current_tier, character_E, code
+            ))
+
+        # 티어 드롭다운 옵션 생성
+        tier_options = []
         for tier_name_kr, tier_value in tier_filter.items():
-            # 티어 이모지 이름: _plus 접미사 제거
             emoji_name = tier_value.replace("_plus", "")
             emoji_id = tier_emoji_ids.get(tier_value)
-            options.append(
+            tier_options.append(
                 discord.SelectOption(
                     label=tier_name_kr,
                     value=tier_value,
@@ -319,10 +400,9 @@ class StatsTierSelectView(discord.ui.View):
                 )
             )
 
-        self.select_menu = StatsTierSelect(
-            options, tier_data, weapon_E, character_E, code
-        )
-        self.add_item(self.select_menu)
+        self.add_item(StatsTierSelect(
+            tier_options, tier_data, current_weapon, character_E, code
+        ))
 
     async def on_timeout(self):
         """타임아웃 시 모든 컴포넌트 비활성화"""
@@ -748,21 +828,14 @@ class game_info(commands.Cog):
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅌㄱ", description="캐릭터 통계를 가져옵니다.")
-    @app_commands.describe(weapon="무기 이름", character="캐릭터 이름")
+    @app_commands.describe(character="캐릭터 이름")
     async def character_statistics(
-        self, interaction: discord.Interaction, weapon: str, character: str
+        self, interaction: discord.Interaction, character: str
     ):
         # 먼저 defer()로 "로딩 중..." 상태 표시 (3초 타임아웃 방지)
         await interaction.response.defer()
 
         try:
-            # 무기/캐릭터 이름 검증
-            if weapon not in weapon_english:
-                await interaction.followup.send(
-                    f"❌ '{weapon}'은(는) 올바른 무기 이름이 아닙니다.", ephemeral=True
-                )
-                return
-
             if character not in char_english:
                 await interaction.followup.send(
                     f"❌ '{character}'은(는) 올바른 캐릭터 이름이 아닙니다.",
@@ -770,28 +843,42 @@ class game_info(commands.Cog):
                 )
                 return
 
-            weapon_E = weapon_english[weapon]
             character_E = char_english[character]
 
-            # 캐릭터가 해당 무기를 사용할 수 있는지 검증
-            if weapon not in char_weapons.get(character, []):
-                await interaction.followup.send(
-                    f"❌ {character}은(는) {weapon}을(를) 사용할 수 없습니다.\n"
-                    f"사용 가능한 무기: {', '.join(char_weapons[character])}",
-                    ephemeral=True,
+            logger.info(f"통계 크롤링 시작: {character}")
+
+            # 캐시 확인: 5분 내 동일 캐릭터 재조회 시 캐시 사용
+            cached = _stats_cache.get(character_E)
+            if cached and time.time() - cached["timestamp"] < _STATS_CACHE_TTL:
+                logger.info(f"통계 캐시 히트: {character}")
+                tier_data = cached["tier_data"]
+                default_weapon = cached["default_weapon"]
+                all_weapons = tier_data.get("diamond_plus", {})
+            else:
+                # 다이아몬드+ 전체 무기 통계 크롤링 (한 번 요청으로 모든 무기)
+                all_weapons = await gg.dakgg_crawler_all_weapons(character_E)
+
+                # 가장 인기 무기 = dict의 첫 번째 키 (count 내림차순 정렬됨)
+                default_weapon = next(iter(all_weapons))
+
+                # 티어별 데이터 저장소: {tier: {weapon: stats_dict}}
+                tier_data = {"diamond_plus": all_weapons}
+
+                # 캐시에 저장
+                _stats_cache[character_E] = {
+                    "tier_data": tier_data,
+                    "default_weapon": default_weapon,
+                    "timestamp": time.time(),
+                }
+
+                # 백그라운드에서 나머지 티어 크롤링 시작
+                asyncio.create_task(
+                    gg.dakgg_crawler_all_weapons_all_tiers(character_E, tier_data)
                 )
-                return
 
-            logger.info(f"통계 크롤링 시작: {weapon} {character}")
-
-            # 다이아몬드+ 통계 먼저 크롤링 (기본값)
-            s_dict = await gg.dakgg_crawler(weapon_E, character_E)
-
-            # 티어별 데이터 저장소 (백그라운드 크롤링과 공유)
-            tier_data = {"diamond_plus": s_dict}
-
-            # Embed 생성
-            embed = create_stats_embed(s_dict, "다이아몬드+", weapon_E, character_E)
+            # 기본 무기 통계로 Embed 생성
+            s_dict = all_weapons[default_weapon]
+            embed = create_stats_embed(s_dict, "다이아몬드+", default_weapon, character_E)
 
             code = s_dict["code"]
             file = discord.File(
@@ -800,20 +887,14 @@ class game_info(commands.Cog):
             )
             embed.set_thumbnail(url="attachment://profile.png")
 
-            # 티어 선택 드롭다운 View 생성
-            view = StatsTierSelectView(
-                weapon_E, character_E, "diamond_plus", tier_data, code
+            # 무기 + 티어 선택 드롭다운 View 생성
+            view = StatsSelectView(
+                character_E, default_weapon, "diamond_plus", tier_data, code
             )
 
-            # defer() 사용 후에는 followup.send()로 응답
             await interaction.followup.send(file=file, embed=embed, view=view)
 
-            # 백그라운드에서 나머지 티어 크롤링 시작
-            asyncio.create_task(
-                gg.dakgg_crawler_all_tiers(weapon_E, character_E, tier_data)
-            )
-
-            print_user_server(interaction, f"Success get character statistics {weapon} {character}")
+            print_user_server(interaction, f"Success get character statistics {character}")
             await logging_function(self.bot, interaction)
 
         except KeyError as e:

@@ -34,18 +34,22 @@ async def on_ready():
     bot.owner_id = Config.BOT_OWNER_ID
     bot.log_channel = bot.get_channel(Config.LOG_CHANNEL_ID)
     try:
-        # 개발 중이라면 특정 길드에만 동기화 (빠름)
-        # GUILD_ID = Config.SPECIFIC_SERVER_ID  # 테스트 서버 ID
-        # synced = await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
-        # logger.info(f"Synced {len(synced)} commands to guild {GUILD_ID}")
-
-        # 전역 동기화 (모든 서버에 적용, 최대 1시간 소요)
-        synced = await bot.tree.sync()
-        logger.info(f"Synced {len(synced)} commands globally")
-
-        # 현재 등록된 명령어 목록 출력
+        # 봇이 참여 중인 모든 길드에 명령어 동기화 (즉시 반영)
         commands_list = [cmd.name for cmd in bot.tree.get_commands()]
         logger.debug(f"Registered commands: {commands_list}")
+
+        synced_count = 0
+        for guild in bot.guilds:
+            try:
+                synced = await bot.tree.sync(guild=guild)
+                synced_count += 1
+                logger.debug(
+                    f"Synced {len(synced)} commands to {guild.name} ({guild.id})"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to sync to {guild.name} ({guild.id}): {e}")
+
+        logger.info(f"Synced commands to {synced_count}/{len(bot.guilds)} guilds")
 
     except Exception as e:
         logger.error(f"Failed to sync commands: {e}")
@@ -61,6 +65,13 @@ async def on_guild_join(guild):
     await bot.change_presence(
         activity=discord.Game(name=f"눈젖빵 {len(bot.guilds)}개째 제작")
     )
+
+    # 새 서버에 명령어 즉시 동기화
+    try:
+        await bot.tree.sync(guild=guild)
+        logger.info(f"Synced commands to new guild {guild.name} ({guild.id})")
+    except Exception as e:
+        logger.warning(f"Failed to sync to new guild {guild.name}: {e}")
 
     new_server = guild.system_channel
     server_info = (guild.name, guild.id)

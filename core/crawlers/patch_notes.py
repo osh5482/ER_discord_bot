@@ -26,7 +26,7 @@ class PatchNoteCrawler:
         self._context = await self._browser.new_context(
             locale="ko-KR",
             # 성능 최적화 옵션
-            viewport={"width": 1280, "height": 720},
+            viewport={"width": 800, "height": 600},
             ignore_https_errors=True,
             java_script_enabled=True,
             # 불필요한 리소스 비활성화
@@ -133,6 +133,8 @@ class PatchNoteCrawler:
             "--no-default-browser-check",
             "--single-process",  # 단일 프로세스로 메모리 사용량 줄임
             "--memory-pressure-off",
+            "--js-flags=--max-old-space-size=256",  # JS 힙 메모리 제한 (256MB)
+            "--disable-software-rasterizer",
         ]
 
         if current_os == "Linux":
@@ -460,11 +462,26 @@ _patch_cache = {"data": None, "timestamp": 0, "cache_duration": 300}  # 5분 캐
 async def get_patch_info(load_all: bool = False, until_version: str = None):
     """패치노트 정보 반환
 
+    캐시가 유효하고 증분/최근 모드인 경우 캐시된 데이터를 반환한다.
+    전체 히스토리 모드(load_all=True)에서는 항상 새로 크롤링한다.
+
     Args:
         load_all: True이면 더보기를 끝까지 눌러 전체 패치 히스토리를 수집한다.
         until_version: 증분 크롤링 시 기준 버전. 이 버전이 보이면 더보기 클릭 중단.
                        load_all=True이거나 None이면 무시된다.
     """
+    import time
+
+    # 캐시 확인: 전체 모드가 아니고, 캐시가 유효하면 캐시된 데이터 반환
+    now = time.time()
+    if (
+        not load_all
+        and _patch_cache["data"] is not None
+        and now - _patch_cache["timestamp"] < _patch_cache["cache_duration"]
+    ):
+        logger.info("패치노트 캐시 히트 - 캐시된 데이터 반환")
+        return _patch_cache["data"]
+
     mode_label = (
         "[전체 히스토리]"
         if load_all
@@ -475,5 +492,11 @@ async def get_patch_info(load_all: bool = False, until_version: str = None):
         patch_info = await crawler.get_patch_info(
             load_all=load_all, until_version=until_version
         )
+
+        # 크롤링 성공 시 캐시 갱신
+        if patch_info and not load_all:
+            _patch_cache["data"] = patch_info
+            _patch_cache["timestamp"] = now
+            logger.info("패치노트 캐시 갱신 완료")
 
         return patch_info

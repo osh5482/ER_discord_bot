@@ -142,6 +142,32 @@ class admin(commands.Cog):
                 "서버 이름 입력 시간이 초과되었습니다.", ephemeral=True
             )
 
+    async def list_emojis(self, interaction: discord.Interaction):
+        """테스트 서버의 이모지 이름과 ID 목록 출력"""
+        guild = self.bot.get_guild(SPECIFIC_SERVER_ID)
+        if not guild:
+            await interaction.followup.send("테스트 서버를 찾을 수 없습니다.", ephemeral=True)
+            return
+
+        # 무기 이름 목록 (weapon_korean의 키들)
+        weapon_names = {
+            "Glove", "Tonfa", "Bat", "Hammer", "Whip", "HighAngleFire",
+            "DirectFire", "Bow", "CrossBow", "Pistol", "AssaultRifle",
+            "SniperRifle", "Axe", "OneHandSword", "TwoHandSword", "DualSword",
+            "Spear", "Nunchaku", "Rapier", "Guitar", "Camera", "Arcana", "VFArm",
+        }
+
+        lines = ["```python", "weapon_emoji_ids = {"]
+        found = 0
+        for emoji in guild.emojis:
+            if emoji.name in weapon_names:
+                lines.append(f'    "{emoji.name}": {emoji.id},')
+                found += 1
+        lines.append("}")
+        lines.append(f"```\n{found}개 무기 이모지 발견")
+
+        await interaction.followup.send("\n".join(lines), ephemeral=True)
+
     async def reload_cogs(self, interaction: discord.Interaction):
         """Reload all cogs."""
         await interaction.followup.send("모든 cog를 리로드합니다...", ephemeral=True)
@@ -191,6 +217,20 @@ class ManageView(discord.ui.View):
 
         await interaction.response.defer(ephemeral=True)
         await self.cog.leave_server(interaction)
+
+    @discord.ui.button(label="이모지 ID", style=discord.ButtonStyle.success)
+    async def emojis_button(
+        self, interaction: discord.Interaction, button: discord.ui.Button
+    ):
+        """Handles the emoji list button click."""
+        if interaction.user.id != BOT_OWNER_ID:
+            await interaction.response.send_message(
+                "이 명령어는 봇 소유자만 사용할 수 있습니다.", ephemeral=True
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+        await self.cog.list_emojis(interaction)
 
     @discord.ui.button(label="Cog 리로드", style=discord.ButtonStyle.secondary)
     async def reload_cogs_button(
