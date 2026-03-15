@@ -1,4 +1,5 @@
 import asyncio
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta
@@ -54,6 +55,73 @@ def create_patch_table(c):
     )
 
 
+def _normalize_version(version: str) -> str:
+    """버전 문자열을 정규화한다. trailing '.0'을 제거하여 "1.1.0" → "1.1" 형태로 통일한다."""
+    normalized = re.sub(r"\.0$", "", version)
+    if "." not in normalized:
+        return version
+    return normalized
+
+
+def _migrate_normalize_versions(c):
+    """DB에 저장된 x.x.0 형태의 버전을 x.x로 정규화한다.
+
+    정규화된 버전이 이미 존재하면 데이터를 병합하고 중복 행을 삭제한다.
+    """
+    rows = c.execute("SELECT id, major_version, major_patches, minor_patches FROM patch_notes").fetchall()
+    migrated_count = 0
+
+    for row_id, ver, major_patches_json, minor_patches_json in rows:
+        normalized = _normalize_version(ver)
+        if normalized == ver:
+            continue
+
+        # 정규화된 버전이 이미 존재하는지 확인
+        existing = c.execute(
+            "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = ?",
+            (normalized,),
+        ).fetchone()
+
+        if existing:
+            # 두 행의 데이터를 병합: URL 기준으로 중복 제거
+            existing_id, existing_major_json, existing_minor_json = existing
+
+            old_major = json.loads(major_patches_json) if major_patches_json else []
+            new_major = json.loads(existing_major_json) if existing_major_json else []
+            merged_major = {p["url"]: p for p in old_major}
+            for p in new_major:
+                merged_major[p["url"]] = p
+
+            old_minor = json.loads(minor_patches_json) if minor_patches_json else []
+            new_minor = json.loads(existing_minor_json) if existing_minor_json else []
+            merged_minor = {p["url"]: p for p in old_minor}
+            for p in new_minor:
+                merged_minor[p["url"]] = p
+
+            # 정규화된 행에 병합 데이터 업데이트
+            c.execute(
+                "UPDATE patch_notes SET major_patches = ?, minor_patches = ? WHERE id = ?",
+                (
+                    json.dumps(sorted(merged_major.values(), key=lambda p: p.get("title", "")), ensure_ascii=False),
+                    json.dumps(sorted(merged_minor.values(), key=lambda p: p.get("version", "")), ensure_ascii=False),
+                    existing_id,
+                ),
+            )
+            # 정규화 전 버전 행 삭제
+            c.execute("DELETE FROM patch_notes WHERE id = ?", (row_id,))
+        else:
+            # 단순 UPDATE: major_version만 정규화
+            c.execute(
+                "UPDATE patch_notes SET major_version = ? WHERE id = ?",
+                (normalized, row_id),
+            )
+
+        migrated_count += 1
+
+    if migrated_count > 0:
+        logger.info(f"버전 정규화 마이그레이션 완료: {migrated_count}개 버전 수정")
+
+
 def insert_patch_data(c, patch_info):
     """패치노트 데이터 저장 함수 - 다중 파트 지원
 
@@ -77,16 +145,26 @@ def insert_patch_data(c, patch_info):
         logger.warning("메이저 패치 버전 정보가 없습니다.")
         return
 
-    # 기존 버전이 존재하는지 확인 (minor_patches도 함께 조회)
+    # 버전 정규화: "1.2.0" → "1.2" (trailing .0 제거)
+    major_version = _normalize_version(major_version)
+
+    # 기존 버전이 존재하는지 확인 (정규화 전 버전도 함께 조회)
+    unnormalized = major_version + ".0"
     c.execute(
-        "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = ?",
-        (major_version,),
+        "SELECT id, major_patches, minor_patches, major_version FROM patch_notes WHERE major_version IN (?, ?)",
+        (major_version, unnormalized),
     )
     existing_row = c.fetchone()
+    if existing_row and existing_row[3] != major_version:
+        # 정규화 전 버전으로 저장된 행 발견 → major_version 컬럼도 정규화
+        c.execute(
+            "UPDATE patch_notes SET major_version = ? WHERE id = ?",
+            (major_version, existing_row[0]),
+        )
 
     if existing_row:
         # 기존 데이터와 URL 기준으로 병합하여 크롤링 누락 시 데이터 손실 방지
-        _existing_id, existing_major_patches_json, existing_minor_patches_json = existing_row
+        _existing_id, existing_major_patches_json, existing_minor_patches_json, _ = existing_row
 
         # 메이저 패치 병합: 기존 데이터를 기반으로 새 데이터를 덮어쓰기
         existing_major = json.loads(existing_major_patches_json) if existing_major_patches_json else []
@@ -429,6 +507,9 @@ async def save_patch_notes_to_db(force_full: bool = False):
 
         conn, c = connect_DB()
         create_patch_table(c)
+
+        # 기존 DB의 x.x.0 버전을 x.x로 정규화 (마이그레이션)
+        _migrate_normalize_versions(c)
 
         saved_count = 0
         for version_data in versions:
