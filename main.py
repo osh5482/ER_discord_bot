@@ -50,18 +50,23 @@ async def on_ready():
             for cmd in cog.get_app_commands():
                 bot.tree.add_command(cmd)
 
-        # 각 길드에 즉시 반영
-        synced_count = 0
+        # 각 길드에 즉시 반영 (병렬 처리로 속도 향상)
         for guild in bot.guilds:
+            bot.tree.copy_global_to(guild=guild)
+
+        async def sync_guild(guild):
             try:
-                bot.tree.copy_global_to(guild=guild)
                 synced = await bot.tree.sync(guild=guild)
-                synced_count += 1
                 logger.debug(
                     f"Synced {len(synced)} commands to {guild.name} ({guild.id})"
                 )
+                return True
             except Exception as e:
                 logger.warning(f"Failed to sync to {guild.name} ({guild.id}): {e}")
+                return False
+
+        results = await asyncio.gather(*(sync_guild(guild) for guild in bot.guilds))
+        synced_count = sum(1 for r in results if r)
 
         logger.info(f"Synced commands to {synced_count}/{len(bot.guilds)} guilds")
 
