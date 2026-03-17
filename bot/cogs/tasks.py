@@ -1,7 +1,10 @@
 import asyncio
-from datetime import datetime, time
+import time as time_module
+from datetime import datetime
 from discord.ext import tasks, commands
-from database.connection import *
+from database.connection import (
+    get_pool, create_table, insert_data, delete_old_data, sort_by_time, save_patch_notes_to_db
+)
 from core.api.eternal_return import get_current_player_api
 from utils.logger import logger
 
@@ -19,19 +22,16 @@ class tasks_cog(commands.Cog):
     @tasks.loop(minutes=5.0)
     async def save_data(self):
         """5분마다 동접 데이터 저장 및 삭제 실행하는 함수"""
-        conn, c = connect_DB()
-        create_table(c)
-        current_unix_time = int(time.time())
+        current_unix_time = int(time_module.time())
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_player = await get_current_player_api()
-        insert_data(c, current_unix_time, now, current_player)
-        delete_old_data(c)
-        sort_by_time(c)
+
+        async with get_pool().acquire() as conn:
+            await insert_data(conn, current_unix_time, now, current_player)
+            await delete_old_data(conn)
+
         current_player = format(current_player, ",")
         logger.info(f"Save player {current_player}")
-
-        c.close()
-        conn.close()
 
     @tasks.loop(minutes=1)  # 1분마다 체크
     async def patch_crawler(self):
@@ -69,12 +69,6 @@ class tasks_cog(commands.Cog):
         # 봇 시작 시 한 번 실행
         logger.info("봇 시작 시 패치노트 초기 크롤링 실행")
         await save_patch_notes_to_db()
-
-    # @commands.command(aliases=["그래프"])
-    # async def print_graph(ctx):
-    #     data_list = await get_data()
-    #     await creat_graph(data_list)
-    #     return
 
 
 async def setup(bot):

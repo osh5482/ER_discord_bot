@@ -11,6 +11,7 @@ from discord.ext import commands
 import os
 from config import Config
 from datetime import datetime
+from database.connection import init_pool, close_pool, create_table, create_patch_table
 
 
 intents = discord.Intents.default()
@@ -116,9 +117,17 @@ async def main():
     # 설정 검증
     Config.validate()
 
+    # PostgreSQL 커넥션 풀 초기화 및 테이블 생성
+    await init_pool()
+    await create_table()
+    await create_patch_table()
+
     await load_extensions()
-    await bot.start(Config.BREAD_TOKEN)
-    # await bot.start(Config.INFERIORITY_TOKEN)
+    try:
+        await bot.start(Config.BREAD_TOKEN)  # 서비스용 봇
+        # await bot.start(Config.INFERIORITY_TOKEN)  # 개발용 테스트 봇
+    finally:
+        await close_pool()
 
 
 if __name__ == "__main__":

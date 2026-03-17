@@ -22,7 +22,7 @@ class Config:
     LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
 
     # 데이터베이스 설정
-    DATABASE_PATH = "data.db"
+    DATABASE_URL = os.getenv("DATABASE_URL")
 
     # 디렉토리 경로
     IMAGE_PATH = "./assets/images"
@@ -35,6 +35,7 @@ class Config:
             ("BREAD_TOKEN", cls.BREAD_TOKEN),
             ("ER_API_KEY", cls.ER_API_KEY),
             ("STEAM_API_KEY", cls.STEAM_API_KEY),
+            ("DATABASE_URL", cls.DATABASE_URL),
         ]
 
         missing_vars = [name for name, value in required_vars if not value]

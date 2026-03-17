@@ -4,10 +4,9 @@ from playwright.async_api import async_playwright
 import re
 from collections import defaultdict
 from urllib.parse import urljoin
-import sqlite3
 import json
 from datetime import datetime
-from config import Config
+from database.connection import get_pool, init_pool, close_pool
 from utils.logger import logger
 
 
@@ -98,110 +97,87 @@ class AllPatchCrawler:
 
         return browser
 
-    def _connect_db(self):
-        """데이터베이스 연결 함수"""
-        conn = sqlite3.connect(Config.DATABASE_PATH, isolation_level=None)
-        c = conn.cursor()
-        return conn, c
-
-    def _recreate_patch_notes_table(self, c):
+    async def _recreate_patch_notes_table(self, conn):
         """기존 patch_notes 테이블을 삭제하고 새로운 구조로 재생성"""
-        # 기존 patch_notes 테이블 삭제
-        c.execute("DROP TABLE IF EXISTS patch_notes")
+        await conn.execute("DROP TABLE IF EXISTS patch_notes")
         logger.info("기존 patch_notes 테이블을 삭제했습니다.")
 
-        # 새로운 구조로 patch_notes 테이블 생성
-        c.execute(
+        await conn.execute(
             """CREATE TABLE patch_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 major_version TEXT NOT NULL,
                 major_date TEXT,
                 major_patches TEXT,
                 minor_patches TEXT,
-                updated_at INTEGER NOT NULL,
+                updated_at BIGINT NOT NULL,
                 str_updated_at TEXT NOT NULL
             )"""
         )
         logger.info("새로운 구조로 patch_notes 테이블이 생성되었습니다.")
 
-        # 인덱스 생성
-        c.execute(
+        await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_patch_notes_version ON patch_notes (major_version)"
         )
-        c.execute(
+        await conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_patch_notes_updated_at ON patch_notes (updated_at)"
         )
 
-    def _insert_patch_data(self, c, patch_data_list):
+    async def _insert_patch_data(self, conn, patch_data_list):
         """패치노트 데이터 저장 함수 - 전체 버전 관리"""
         current_unix_time = int(datetime.now().timestamp())
         current_str_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # 기존 데이터 모두 삭제 (전체 재작성 방식)
-        c.execute("DELETE FROM patch_notes")
+        await conn.execute("DELETE FROM patch_notes")
         logger.info("기존 patch_notes 데이터를 삭제했습니다.")
 
         # 새로운 데이터 삽입
         inserted_count = 0
         for patch_data in patch_data_list:
-            c.execute(
-                """INSERT INTO patch_notes 
-                   (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at) 
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (
-                    patch_data["major_version"],
-                    patch_data["major_date"],
-                    patch_data["major_patches"],
-                    patch_data["minor_patches"],
-                    current_unix_time,
-                    current_str_time,
-                ),
+            await conn.execute(
+                """INSERT INTO patch_notes
+                   (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6)""",
+                patch_data["major_version"],
+                patch_data["major_date"],
+                patch_data["major_patches"],
+                patch_data["minor_patches"],
+                current_unix_time,
+                current_str_time,
             )
             inserted_count += 1
 
         logger.info(f"총 {inserted_count}개의 패치 버전이 데이터베이스에 저장되었습니다.")
         return inserted_count
 
-    def _get_all_patches_from_db(self, c):
+    async def _get_all_patches_from_db(self, conn):
         """데이터베이스에서 모든 패치노트 데이터 조회 함수"""
-        c.execute(
-            """SELECT id, major_version, major_date, major_patches, minor_patches, str_updated_at 
-               FROM patch_notes 
+        rows = await conn.fetch(
+            """SELECT id, major_version, major_date, major_patches, minor_patches, str_updated_at
+               FROM patch_notes
                ORDER BY major_version DESC"""
         )
-        rows = c.fetchall()
 
         patches = []
         for row in rows:
-            (
-                patch_id,
-                major_version,
-                major_date,
-                major_patches_json,
-                minor_patches_json,
-                str_updated_at,
-            ) = row
+            major_patches_json = row["major_patches"]
+            minor_patches_json = row["minor_patches"]
 
-            # JSON 문자열을 파이썬 객체로 변환
             try:
-                major_patches = (
-                    json.loads(major_patches_json) if major_patches_json else []
-                )
-                minor_patches = (
-                    json.loads(minor_patches_json) if minor_patches_json else []
-                )
+                major_patches = json.loads(major_patches_json) if major_patches_json else []
+                minor_patches = json.loads(minor_patches_json) if minor_patches_json else []
             except json.JSONDecodeError:
                 major_patches = []
                 minor_patches = []
 
             patches.append(
                 {
-                    "id": patch_id,
-                    "major_version": major_version,
-                    "major_date": major_date,
+                    "id": row["id"],
+                    "major_version": row["major_version"],
+                    "major_date": row["major_date"],
                     "major_patches": major_patches,
                     "minor_patches": minor_patches,
-                    "last_updated": str_updated_at,
+                    "last_updated": row["str_updated_at"],
                 }
             )
 
@@ -424,13 +400,9 @@ class AllPatchCrawler:
 
         logger.info("--- 패치 노트 분류 완료 ---")
 
-    def _save_to_database(self, grouped_patches):
-        """그룹화된 패치 데이터를 SQLite 데이터베이스에 저장"""
-        logger.info("SQLite 데이터베이스에 저장 중...")
-
-        # 데이터베이스 연결 및 테이블 재생성
-        conn, c = self._connect_db()
-        self._recreate_patch_notes_table(c)
+    async def _save_to_database(self, grouped_patches):
+        """그룹화된 패치 데이터를 PostgreSQL 데이터베이스에 저장"""
+        logger.info("PostgreSQL 데이터베이스에 저장 중...")
 
         # 데이터베이스 저장용 데이터 준비
         db_data = []
@@ -506,7 +478,9 @@ class AllPatchCrawler:
 
         # 데이터베이스에 저장
         if db_data:
-            inserted_count = self._insert_patch_data(c, db_data)
+            async with get_pool().acquire() as conn:
+                await self._recreate_patch_notes_table(conn)
+                inserted_count = await self._insert_patch_data(conn, db_data)
 
             # 저장된 데이터 요약 출력
             total_major_patches = sum(
@@ -521,36 +495,26 @@ class AllPatchCrawler:
             )
             logger.info(f"메이저 패치: {total_major_patches}개, 마이너 패치: {total_minor_patches}개")
 
-            # 연결 종료
-            c.close()
-            conn.close()
-
             return inserted_count
         else:
             logger.warning("저장할 데이터가 없습니다.")
-            # 연결 종료
-            c.close()
-            conn.close()
             return 0
 
-    def get_all_patches_summary(self):
+    async def get_all_patches_summary(self):
         """데이터베이스에서 전체 패치노트 요약 정보 조회"""
-        conn, c = self._connect_db()
+        async with get_pool().acquire() as conn:
+            # 테이블 존재 여부 확인
+            table_exists = await conn.fetchval(
+                """SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_name = 'patch_notes'
+                )"""
+            )
+            if not table_exists:
+                logger.warning("patch_notes 테이블이 존재하지 않습니다.")
+                return []
 
-        # 테이블이 존재하는지 확인
-        c.execute(
-            """SELECT count(name) FROM sqlite_master WHERE type='table' AND name='patch_notes' """
-        )
-        if c.fetchone()[0] == 0:
-            logger.warning("patch_notes 테이블이 존재하지 않습니다.")
-            c.close()
-            conn.close()
-            return []
-
-        patches = self._get_all_patches_from_db(c)
-
-        c.close()
-        conn.close()
+            patches = await self._get_all_patches_from_db(conn)
 
         if patches:
             logger.info(f"=== 데이터베이스 저장된 패치노트 요약 ===")
@@ -575,26 +539,32 @@ async def main():
     """메인 실행 함수"""
     logger.info("=== Eternal Return 전체 패치노트 크롤러 시작 ===")
 
-    async with AllPatchCrawler() as crawler:
-        # 모든 패치노트 크롤링
-        grouped_patches = await crawler.crawl_all_patches()
+    # 독립 실행 시 DB 커넥션 풀 초기화
+    await init_pool()
 
-        if grouped_patches:
-            # 콘솔에 결과 출력
-            crawler._print_grouped_patches(grouped_patches)
+    try:
+        async with AllPatchCrawler() as crawler:
+            # 모든 패치노트 크롤링
+            grouped_patches = await crawler.crawl_all_patches()
 
-            # SQLite 데이터베이스에 저장
-            saved_count = crawler._save_to_database(grouped_patches)
+            if grouped_patches:
+                # 콘솔에 결과 출력
+                crawler._print_grouped_patches(grouped_patches)
 
-            if saved_count > 0:
-                logger.info(f"=== 크롤링 완료 === 데이터베이스에 {saved_count}개 버전 저장 완료")
+                # PostgreSQL 데이터베이스에 저장
+                saved_count = await crawler._save_to_database(grouped_patches)
 
-                # 저장된 데이터 요약 확인
-                crawler.get_all_patches_summary()
+                if saved_count > 0:
+                    logger.info(f"=== 크롤링 완료 === 데이터베이스에 {saved_count}개 버전 저장 완료")
+
+                    # 저장된 데이터 요약 확인
+                    await crawler.get_all_patches_summary()
+                else:
+                    logger.warning("=== 크롤링 완료 (저장 실패) ===")
             else:
-                logger.warning("=== 크롤링 완료 (저장 실패) ===")
-        else:
-            logger.error("=== 크롤링 실패 ===")
+                logger.error("=== 크롤링 실패 ===")
+    finally:
+        await close_pool()
 
 
 if __name__ == "__main__":

@@ -1,58 +1,78 @@
-import asyncio
 import re
-import sqlite3
 import time
 from datetime import datetime, timedelta
 import json
+import asyncpg
 from config import Config
 from utils.logger import logger
 
 
-def connect_DB():
-    """데이터베이스 연결 함수"""
-    conn = sqlite3.connect(Config.DATABASE_PATH, isolation_level=None)
-    c = conn.cursor()
-    return conn, c
+# 글로벌 커넥션 풀
+_pool: asyncpg.Pool | None = None
 
 
-def create_table(c):
-    """테이블 생성 여부 확인"""
-    c.execute(
-        """SELECT count(name) FROM sqlite_master WHERE type='table' AND name='my_data' """
+async def init_pool():
+    """asyncpg 커넥션 풀을 초기화한다. 봇 시작 시 한 번 호출해야 한다."""
+    global _pool
+    _pool = await asyncpg.create_pool(
+        dsn=Config.DATABASE_URL,
+        min_size=2,
+        max_size=10,
+        ssl="require",
     )
-    if c.fetchone()[0] == 0:
-        c.execute(
-            """CREATE TABLE my_data (time INTEGER, str_time TEXT, player INTEGER)"""
+    logger.info("PostgreSQL 커넥션 풀이 초기화되었습니다.")
+
+
+async def close_pool():
+    """커넥션 풀을 종료한다. 봇 종료 시 호출해야 한다."""
+    global _pool
+    if _pool:
+        await _pool.close()
+        _pool = None
+        logger.info("PostgreSQL 커넥션 풀이 종료되었습니다.")
+
+
+def get_pool() -> asyncpg.Pool:
+    """현재 커넥션 풀을 반환한다."""
+    if _pool is None:
+        raise RuntimeError("Database pool is not initialized. Call init_pool() first.")
+    return _pool
+
+
+async def create_table():
+    """my_data 테이블이 없으면 생성한다."""
+    async with get_pool().acquire() as conn:
+        await conn.execute(
+            """CREATE TABLE IF NOT EXISTS my_data (
+                time BIGINT,
+                str_time TEXT,
+                player INTEGER
+            )"""
         )
-
-    # time 컬럼을 index로 설정
-    c.execute("CREATE INDEX IF NOT EXISTS idx_time ON my_data (time)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_time ON my_data (time)")
 
 
-def create_patch_table(c):
-    """패치노트 테이블 생성 함수 - 새로운 구조"""
-    c.execute(
-        """SELECT count(name) FROM sqlite_master WHERE type='table' AND name='patch_notes' """
-    )
-    if c.fetchone()[0] == 0:
-        c.execute(
-            """CREATE TABLE patch_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+async def create_patch_table():
+    """patch_notes 테이블이 없으면 생성한다."""
+    async with get_pool().acquire() as conn:
+        await conn.execute(
+            """CREATE TABLE IF NOT EXISTS patch_notes (
+                id SERIAL PRIMARY KEY,
                 major_version TEXT NOT NULL,
                 major_date TEXT,
                 major_patches TEXT,
                 minor_patches TEXT,
-                updated_at INTEGER NOT NULL,
+                updated_at BIGINT NOT NULL,
                 str_updated_at TEXT NOT NULL
             )"""
         )
-        logger.info("패치노트 테이블이 생성되었습니다.")
-
-    # updated_at 컬럼을 index로 설정
-    c.execute("CREATE INDEX IF NOT EXISTS idx_updated_at ON patch_notes (updated_at)")
-    c.execute(
-        "CREATE INDEX IF NOT EXISTS idx_major_version ON patch_notes (major_version)"
-    )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_updated_at ON patch_notes (updated_at)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_major_version ON patch_notes (major_version)"
+        )
+        logger.debug("patch_notes 테이블 확인/생성 완료")
 
 
 def _normalize_version(version: str) -> str:
@@ -63,28 +83,35 @@ def _normalize_version(version: str) -> str:
     return normalized
 
 
-def _migrate_normalize_versions(c):
+async def _migrate_normalize_versions(conn):
     """DB에 저장된 x.x.0 형태의 버전을 x.x로 정규화한다.
 
     정규화된 버전이 이미 존재하면 데이터를 병합하고 중복 행을 삭제한다.
     """
-    rows = c.execute("SELECT id, major_version, major_patches, minor_patches FROM patch_notes").fetchall()
+    rows = await conn.fetch(
+        "SELECT id, major_version, major_patches, minor_patches FROM patch_notes"
+    )
     migrated_count = 0
 
-    for row_id, ver, major_patches_json, minor_patches_json in rows:
+    for row in rows:
+        row_id, ver, major_patches_json, minor_patches_json = (
+            row["id"], row["major_version"], row["major_patches"], row["minor_patches"]
+        )
         normalized = _normalize_version(ver)
         if normalized == ver:
             continue
 
         # 정규화된 버전이 이미 존재하는지 확인
-        existing = c.execute(
-            "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = ?",
-            (normalized,),
-        ).fetchone()
+        existing = await conn.fetchrow(
+            "SELECT id, major_patches, minor_patches FROM patch_notes WHERE major_version = $1",
+            normalized,
+        )
 
         if existing:
             # 두 행의 데이터를 병합: URL 기준으로 중복 제거
-            existing_id, existing_major_json, existing_minor_json = existing
+            existing_id, existing_major_json, existing_minor_json = (
+                existing["id"], existing["major_patches"], existing["minor_patches"]
+            )
 
             old_major = json.loads(major_patches_json) if major_patches_json else []
             new_major = json.loads(existing_major_json) if existing_major_json else []
@@ -99,21 +126,19 @@ def _migrate_normalize_versions(c):
                 merged_minor[p["url"]] = p
 
             # 정규화된 행에 병합 데이터 업데이트
-            c.execute(
-                "UPDATE patch_notes SET major_patches = ?, minor_patches = ? WHERE id = ?",
-                (
-                    json.dumps(sorted(merged_major.values(), key=lambda p: p.get("title", "")), ensure_ascii=False),
-                    json.dumps(sorted(merged_minor.values(), key=lambda p: p.get("version", "")), ensure_ascii=False),
-                    existing_id,
-                ),
+            await conn.execute(
+                "UPDATE patch_notes SET major_patches = $1, minor_patches = $2 WHERE id = $3",
+                json.dumps(sorted(merged_major.values(), key=lambda p: p.get("title", "")), ensure_ascii=False),
+                json.dumps(sorted(merged_minor.values(), key=lambda p: p.get("version", "")), ensure_ascii=False),
+                existing_id,
             )
             # 정규화 전 버전 행 삭제
-            c.execute("DELETE FROM patch_notes WHERE id = ?", (row_id,))
+            await conn.execute("DELETE FROM patch_notes WHERE id = $1", row_id)
         else:
             # 단순 UPDATE: major_version만 정규화
-            c.execute(
-                "UPDATE patch_notes SET major_version = ? WHERE id = ?",
-                (normalized, row_id),
+            await conn.execute(
+                "UPDATE patch_notes SET major_version = $1 WHERE id = $2",
+                normalized, row_id,
             )
 
         migrated_count += 1
@@ -122,7 +147,7 @@ def _migrate_normalize_versions(c):
         logger.info(f"버전 정규화 마이그레이션 완료: {migrated_count}개 버전 수정")
 
 
-def insert_patch_data(c, patch_info):
+async def insert_patch_data(conn, patch_info):
     """패치노트 데이터 저장 함수 - 다중 파트 지원
 
     patch_info 구조:
@@ -150,21 +175,21 @@ def insert_patch_data(c, patch_info):
 
     # 기존 버전이 존재하는지 확인 (정규화 전 버전도 함께 조회)
     unnormalized = major_version + ".0"
-    c.execute(
-        "SELECT id, major_patches, minor_patches, major_version FROM patch_notes WHERE major_version IN (?, ?)",
-        (major_version, unnormalized),
+    existing_row = await conn.fetchrow(
+        "SELECT id, major_patches, minor_patches, major_version FROM patch_notes WHERE major_version = $1 OR major_version = $2",
+        major_version, unnormalized,
     )
-    existing_row = c.fetchone()
-    if existing_row and existing_row[3] != major_version:
+    if existing_row and existing_row["major_version"] != major_version:
         # 정규화 전 버전으로 저장된 행 발견 → major_version 컬럼도 정규화
-        c.execute(
-            "UPDATE patch_notes SET major_version = ? WHERE id = ?",
-            (major_version, existing_row[0]),
+        await conn.execute(
+            "UPDATE patch_notes SET major_version = $1 WHERE id = $2",
+            major_version, existing_row["id"],
         )
 
     if existing_row:
         # 기존 데이터와 URL 기준으로 병합하여 크롤링 누락 시 데이터 손실 방지
-        _existing_id, existing_major_patches_json, existing_minor_patches_json, _ = existing_row
+        existing_major_patches_json = existing_row["major_patches"]
+        existing_minor_patches_json = existing_row["minor_patches"]
 
         # 메이저 패치 병합: 기존 데이터를 기반으로 새 데이터를 덮어쓰기
         existing_major = json.loads(existing_major_patches_json) if existing_major_patches_json else []
@@ -185,19 +210,17 @@ def insert_patch_data(c, patch_info):
 
         if (existing_major_patches_json != major_patches_json
                 or existing_minor_patches_json != minor_patches_json):
-            c.execute(
+            await conn.execute(
                 """UPDATE patch_notes
-                   SET major_date = ?, major_patches = ?, minor_patches = ?,
-                       updated_at = ?, str_updated_at = ?
-                   WHERE major_version = ?""",
-                (
-                    major_date,
-                    major_patches_json,
-                    minor_patches_json,
-                    current_unix_time,
-                    current_str_time,
-                    major_version,
-                ),
+                   SET major_date = $1, major_patches = $2, minor_patches = $3,
+                       updated_at = $4, str_updated_at = $5
+                   WHERE major_version = $6""",
+                major_date,
+                major_patches_json,
+                minor_patches_json,
+                current_unix_time,
+                current_str_time,
+                major_version,
             )
             logger.info(f"패치노트 버전 {major_version}이 업데이트되었습니다. ({current_str_time})")
             for part in major_patches:
@@ -208,33 +231,29 @@ def insert_patch_data(c, patch_info):
         # 새로운 버전이면 삽입
         major_patches_json = json.dumps(major_patches, ensure_ascii=False)
         minor_patches_json = json.dumps(minor_patch_data, ensure_ascii=False)
-        c.execute(
+        await conn.execute(
             """INSERT INTO patch_notes
                (major_version, major_date, major_patches, minor_patches, updated_at, str_updated_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (
-                major_version,
-                major_date,
-                major_patches_json,
-                minor_patches_json,
-                current_unix_time,
-                current_str_time,
-            ),
+               VALUES ($1, $2, $3, $4, $5, $6)""",
+            major_version,
+            major_date,
+            major_patches_json,
+            minor_patches_json,
+            current_unix_time,
+            current_str_time,
         )
         logger.info(f"새로운 패치노트 버전 {major_version}이 저장되었습니다. ({current_str_time})")
         for part in major_patches:
             logger.debug(f"  - {part['title']}")
 
 
-def get_latest_patch_data(c):
-    """최신 패치노트 데이터 조회 함수 - 새로운 구조에 맞게 수정"""
-    # 모든 패치 데이터를 버전 순으로 정렬하여 가져오기
-    c.execute(
-        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
-           FROM patch_notes 
+async def get_latest_patch_data(conn):
+    """최신 패치노트 데이터 조회 함수"""
+    rows = await conn.fetch(
+        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at
+           FROM patch_notes
            ORDER BY major_version DESC"""
     )
-    rows = c.fetchall()
 
     if not rows:
         return None
@@ -250,13 +269,11 @@ def get_latest_patch_data(c):
     # 패치 데이터 처리 및 정렬
     all_patches = []
     for row in rows:
-        (
-            major_version,
-            major_date,
-            major_patches_json,
-            minor_patches_json,
-            str_updated_at,
-        ) = row
+        major_version = row["major_version"]
+        major_date = row["major_date"]
+        major_patches_json = row["major_patches"]
+        minor_patches_json = row["minor_patches"]
+        str_updated_at = row["str_updated_at"]
 
         # JSON 파싱
         try:
@@ -314,46 +331,41 @@ def get_latest_patch_data(c):
         "major_patch_date": latest_major_patch["major_date"]
         or first_major.get("date", ""),
         "major_patch_url": first_major.get("url", ""),
-        "minor_patch_data": combined_minor_patches,  # 병합된 마이너 패치들
+        "minor_patch_data": combined_minor_patches,
         "last_updated": latest_major_patch["str_updated_at"],
     }
 
 
-def get_all_patch_versions(c):
-    """모든 저장된 패치 버전 목록 조회 함수 - 새로운 구조에 맞게 수정"""
-    c.execute(
-        """SELECT major_version, str_updated_at 
-           FROM patch_notes 
+async def get_all_patch_versions(conn):
+    """모든 저장된 패치 버전 목록 조회 함수"""
+    rows = await conn.fetch(
+        """SELECT major_version, str_updated_at
+           FROM patch_notes
            ORDER BY updated_at DESC"""
     )
-    rows = c.fetchall()
 
     versions = []
     for row in rows:
-        major_version, str_updated_at = row
-        versions.append({"version": major_version, "updated_at": str_updated_at})
+        versions.append({"version": row["major_version"], "updated_at": row["str_updated_at"]})
 
     return versions
 
 
-def get_patch_data_by_version(c, version):
-    """특정 버전의 패치노트 데이터 조회 함수 - 새로운 구조에 맞게 수정"""
-    c.execute(
-        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
-           FROM patch_notes 
-           WHERE major_version = ?""",
-        (version,),
+async def get_patch_data_by_version(conn, version):
+    """특정 버전의 패치노트 데이터 조회 함수"""
+    row = await conn.fetchrow(
+        """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at
+           FROM patch_notes
+           WHERE major_version = $1""",
+        version,
     )
-    row = c.fetchone()
 
     if row:
-        (
-            major_version,
-            major_date,
-            major_patches_json,
-            minor_patches_json,
-            str_updated_at,
-        ) = row
+        major_version = row["major_version"]
+        major_date = row["major_date"]
+        major_patches_json = row["major_patches"]
+        minor_patches_json = row["minor_patches"]
+        str_updated_at = row["str_updated_at"]
 
         # JSON 문자열을 파이썬 객체로 변환
         try:
@@ -376,61 +388,51 @@ def get_patch_data_by_version(c, version):
     return None
 
 
-def insert_data(c, current_time, now, currentPlayer):
-    """데이터 저장 함수"""
-    c.execute(
-        "INSERT INTO my_data (time, str_time, player) VALUES (?,?, ?)",
-        (current_time, now, currentPlayer),
+async def insert_data(conn, current_time, now, currentPlayer):
+    """동접 데이터 저장 함수"""
+    await conn.execute(
+        "INSERT INTO my_data (time, str_time, player) VALUES ($1, $2, $3)",
+        current_time, now, currentPlayer,
     )
 
 
-def delete_old_data(c):
-    """이전 데이터 삭제 함수"""
+async def delete_old_data(conn):
+    """24시간 이상 된 동접 데이터 삭제 함수"""
     twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
     unix_time_24_hours_ago = int(time.mktime(twenty_four_hours_ago.timetuple()))
-    c.execute("DELETE FROM my_data WHERE time < ?", (unix_time_24_hours_ago,))
+    await conn.execute("DELETE FROM my_data WHERE time < $1", unix_time_24_hours_ago)
 
 
-def get_most_data(c):
+async def get_most_data(conn):
     """현재 저장된 모든 데이터 중 가장 높은 유저값을 가진 출력 함수"""
-    c.execute("SELECT * FROM my_data ORDER BY player DESC LIMIT 1")
-    row = c.fetchall()[0]
-    players = row[-1]
-    return players
+    row = await conn.fetchrow("SELECT * FROM my_data ORDER BY player DESC LIMIT 1")
+    if row:
+        return row["player"]
+    return 0
 
 
-def sort_by_time(c, ascending=True):
-    # ascending이 True이면 오름차순, False이면 내림차순으로 정렬
+async def sort_by_time(conn, ascending=True):
+    """시간순으로 정렬된 데이터를 반환한다."""
     order = "ASC" if ascending else "DESC"
-    c.execute("SELECT * FROM my_data ORDER BY time " + order)
+    return await conn.fetch(f"SELECT * FROM my_data ORDER BY time {order}")
 
 
 async def load_24h():
-    conn, c = connect_DB()
-    most_24h = get_most_data(c)
-    c.close()
-    conn.close()
-    return most_24h
+    """24시간 최고 동접 데이터를 조회한다."""
+    async with get_pool().acquire() as conn:
+        return await get_most_data(conn)
 
 
 async def get_data():
-    conn, c = connect_DB()
-    sort_by_time(c)
-
-    c.execute("SELECT * FROM my_data")
-    rows = c.fetchall()
-
-    data_list = []
-    for row in rows:
-        data_list.append(row)
-
-    c.close()
-    conn.close()
-    logger.debug(f"get_data() result: {data_list}")
-    return data_list
+    """전체 동접 데이터를 시간순으로 조회한다."""
+    async with get_pool().acquire() as conn:
+        rows = await sort_by_time(conn)
+        data_list = [(row["time"], row["str_time"], row["player"]) for row in rows]
+        logger.debug(f"get_data() result: {data_list}")
+        return data_list
 
 
-def _get_latest_stored_version(c) -> str:
+async def _get_latest_stored_version(conn) -> str:
     """DB에 저장된 버전 중 가장 최신 버전 문자열을 반환한다.
 
     버전 비교는 숫자 기반 정렬로 수행한다 (예: "10.1" > "9.4").
@@ -438,8 +440,7 @@ def _get_latest_stored_version(c) -> str:
     Returns:
         str: 가장 최신 버전 문자열. DB가 비어있으면 None.
     """
-    c.execute("SELECT major_version FROM patch_notes")
-    rows = c.fetchall()
+    rows = await conn.fetch("SELECT major_version FROM patch_notes")
     if not rows:
         return None
 
@@ -449,7 +450,7 @@ def _get_latest_stored_version(c) -> str:
         except (ValueError, AttributeError):
             return (0, 0)
 
-    versions = [row[0] for row in rows]
+    versions = [row["major_version"] for row in rows]
     return max(versions, key=version_key)
 
 
@@ -471,13 +472,10 @@ async def save_patch_notes_to_db(force_full: bool = False):
         from core.api.eternal_return import get_patchnote
 
         # DB 상태 확인 (저장된 버전 수 및 최신 버전 조회)
-        conn_check, c_check = connect_DB()
-        create_patch_table(c_check)
-        c_check.execute("SELECT COUNT(*) FROM patch_notes")
-        existing_count = c_check.fetchone()[0]
-        latest_stored_version = _get_latest_stored_version(c_check)
-        c_check.close()
-        conn_check.close()
+        async with get_pool().acquire() as conn:
+            await create_patch_table()
+            existing_count = await conn.fetchval("SELECT COUNT(*) FROM patch_notes")
+            latest_stored_version = await _get_latest_stored_version(conn)
 
         if force_full:
             # 전체 크롤링 모드: 더보기를 끝까지 눌러 전체 히스토리 수집
@@ -505,19 +503,15 @@ async def save_patch_notes_to_db(force_full: bool = False):
             logger.warning("크롤링된 패치노트 버전 정보가 없습니다.")
             return False
 
-        conn, c = connect_DB()
-        create_patch_table(c)
+        async with get_pool().acquire() as conn:
+            # 기존 DB의 x.x.0 버전을 x.x로 정규화 (마이그레이션)
+            await _migrate_normalize_versions(conn)
 
-        # 기존 DB의 x.x.0 버전을 x.x로 정규화 (마이그레이션)
-        _migrate_normalize_versions(c)
+            saved_count = 0
+            for version_data in versions:
+                await insert_patch_data(conn, version_data)
+                saved_count += 1
 
-        saved_count = 0
-        for version_data in versions:
-            insert_patch_data(c, version_data)
-            saved_count += 1
-
-        c.close()
-        conn.close()
         logger.info(f"패치노트 데이터 저장 완료 (처리한 버전 수: {saved_count}개)")
         return True
 
@@ -529,24 +523,13 @@ async def save_patch_notes_to_db(force_full: bool = False):
 async def get_patch_notes_from_db():
     """DB에서 패치노트 데이터를 가져오는 함수"""
     try:
-        conn, c = connect_DB()
-        create_patch_table(c)  # 테이블이 없으면 생성
+        await create_patch_table()
 
-        patch_data = get_latest_patch_data(c)
-
-        c.close()
-        conn.close()
+        async with get_pool().acquire() as conn:
+            patch_data = await get_latest_patch_data(conn)
 
         return patch_data
 
     except Exception as e:
         logger.error(f"패치노트 조회 중 오류 발생: {e}")
         return None
-
-
-async def main():
-    return
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

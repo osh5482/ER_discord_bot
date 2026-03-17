@@ -10,7 +10,8 @@ import core.crawlers.statistics as gg
 from utils.constants import char_english, weapon_korean, tier_filter, tier_korean, tier_emoji_ids, weapon_emoji_ids
 from utils.helpers import *
 from utils.logger import logger
-from database.connection import *
+import json
+from database.connection import get_pool, create_table, create_patch_table, insert_data, load_24h
 from config import Config
 
 # 캐릭터 통계 인메모리 캐시: 같은 캐릭터+무기 조합을 5분 내 재조회 시 즉시 응답
@@ -545,19 +546,12 @@ class game_info(commands.Cog):
 
         # DB에서 모든 패치노트 정보 조회
         try:
-            conn, c = connect_DB()
-            create_patch_table(c)  # 테이블이 없으면 생성
-
-            # 모든 패치 데이터 조회 (버전 순으로 정렬)
-            c.execute(
-                """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at 
-                   FROM patch_notes 
-                   ORDER BY major_version DESC"""
-            )
-            rows = c.fetchall()
-
-            c.close()
-            conn.close()
+            async with get_pool().acquire() as conn:
+                rows = await conn.fetch(
+                    """SELECT major_version, major_date, major_patches, minor_patches, str_updated_at
+                       FROM patch_notes
+                       ORDER BY major_version DESC"""
+                )
 
         except Exception as e:
             await interaction.followup.send(
@@ -583,13 +577,11 @@ class game_info(commands.Cog):
         # 패치 데이터 처리 및 정렬
         all_patches = []
         for row in rows:
-            (
-                major_version,
-                major_date,
-                major_patches_json,
-                minor_patches_json,
-                str_updated_at,
-            ) = row
+            major_version = row["major_version"]
+            major_date = row["major_date"]
+            major_patches_json = row["major_patches"]
+            minor_patches_json = row["minor_patches"]
+            str_updated_at = row["str_updated_at"]
 
             # JSON 파싱
             try:
@@ -661,12 +653,8 @@ class game_info(commands.Cog):
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         in_game_user = await ER.get_current_player_api()
 
-        conn, c = connect_DB()
-        create_table(c)
-        insert_data(c, current_unix_time, now, in_game_user)
-
-        c.close()
-        conn.close()
+        async with get_pool().acquire() as conn:
+            await insert_data(conn, current_unix_time, now, in_game_user)
 
         most_24h = await load_24h()
 
