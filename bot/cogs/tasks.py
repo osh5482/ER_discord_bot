@@ -19,9 +19,9 @@ class tasks_cog(commands.Cog):
         self.save_data.cancel()
         self.patch_crawler.cancel()
 
-    @tasks.loop(minutes=5.0)
+    @tasks.loop(minutes=15.0)
     async def save_data(self):
-        """5분마다 동접 데이터 저장 및 삭제 실행하는 함수"""
+        """15분마다 동접 데이터 저장 및 삭제 실행하는 함수"""
         current_unix_time = int(time_module.time())
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         current_player = await get_current_player_api()
