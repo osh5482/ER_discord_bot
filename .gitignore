@@ -231,4 +231,7 @@ logs/
 .vscode/*.*
 
 
+# Claude Code local settings
+.claude/*.*
+
 # End of https://www.toptal.com/developers/gitignore/api/windows,python,visualstudiocode
