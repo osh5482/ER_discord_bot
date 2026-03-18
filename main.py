@@ -50,20 +50,25 @@ async def on_ready():
             for cmd in cog.get_app_commands():
                 bot.tree.add_command(cmd)
 
-        # 각 길드에 즉시 반영 (병렬 처리로 속도 향상)
+        # 각 길드에 즉시 반영 (세마포어로 동시 요청 수 제한하여 rate limit 방지)
         for guild in bot.guilds:
             bot.tree.copy_global_to(guild=guild)
 
+        sem = asyncio.Semaphore(5)
+
         async def sync_guild(guild):
-            try:
-                synced = await bot.tree.sync(guild=guild)
-                logger.debug(
-                    f"Synced {len(synced)} commands to {guild.name} ({guild.id})"
-                )
-                return True
-            except Exception as e:
-                logger.warning(f"Failed to sync to {guild.name} ({guild.id}): {e}")
-                return False
+            async with sem:
+                try:
+                    synced = await bot.tree.sync(guild=guild)
+                    logger.debug(
+                        f"Synced {len(synced)} commands to {guild.name} ({guild.id})"
+                    )
+                    return True
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to sync to {guild.name} ({guild.id}): {e}"
+                    )
+                    return False
 
         results = await asyncio.gather(*(sync_guild(guild) for guild in bot.guilds))
         synced_count = sum(1 for r in results if r)
