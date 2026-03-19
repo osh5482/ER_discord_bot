@@ -7,15 +7,30 @@ from discord.ext import commands
 from discord import app_commands
 import core.api.eternal_return as ER
 import core.crawlers.statistics as gg
-from utils.constants import char_english, weapon_korean, tier_filter, tier_korean, tier_emoji_ids, weapon_emoji_ids
+from utils.constants import (
+    char_english,
+    weapon_korean,
+    tier_filter,
+    tier_korean,
+    tier_emoji_ids,
+    weapon_emoji_ids,
+)
 from utils.helpers import *
 from utils.logger import logger
 import json
-from database.connection import get_pool, create_table, create_patch_table, insert_data, load_24h
+from database.connection import (
+    get_pool,
+    create_table,
+    create_patch_table,
+    insert_data,
+    load_24h,
+)
 from config import Config
 
 # 캐릭터 통계 인메모리 캐시: 같은 캐릭터+무기 조합을 5분 내 재조회 시 즉시 응답
-_stats_cache = {}  # key: (weapon, character), value: {"tier_data": dict, "timestamp": float}
+_stats_cache = (
+    {}
+)  # key: (weapon, character), value: {"tier_data": dict, "timestamp": float}
 _STATS_CACHE_TTL = 300  # 5분
 
 
@@ -224,15 +239,9 @@ def create_stats_embed(s_dict, tier_name, weapon_E, character_E):
     win_rank = s_dict["승률"]["ranking"]
     get_RP_rank = s_dict["RP 획득"]["ranking"]
 
-    embed.add_field(
-        name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True
-    )
-    embed.add_field(
-        name="승률", value=f"{win_percent}\n{win_rank}", inline=True
-    )
-    embed.add_field(
-        name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True
-    )
+    embed.add_field(name="픽률", value=f"{pick_percent}\n{pick_rank}", inline=True)
+    embed.add_field(name="승률", value=f"{win_percent}\n{win_rank}", inline=True)
+    embed.add_field(name="RP획득", value=f"{get_RP} RP\n{get_RP_rank}", inline=True)
     embed.set_footer(text=f"가장 최근 패치의 {tier_name} 7일 통계입니다")
 
     return embed
@@ -278,8 +287,11 @@ class StatsWeaponSelect(discord.ui.Select):
 
         # 전체 뷰 재생성 (무기 default 변경)
         new_view = StatsSelectView(
-            self.character_E, selected_weapon, self.current_tier,
-            self.tier_data, self.code
+            self.character_E,
+            selected_weapon,
+            self.current_tier,
+            self.tier_data,
+            self.code,
         )
 
         await interaction.response.edit_message(
@@ -334,7 +346,9 @@ class StatsTierSelect(discord.ui.Select):
             self.current_weapon = next(iter(tier_weapons))
             stats = tier_weapons[self.current_weapon]
 
-        embed = create_stats_embed(stats, tier_name, self.current_weapon, self.character_E)
+        embed = create_stats_embed(
+            stats, tier_name, self.current_weapon, self.character_E
+        )
 
         file = discord.File(
             f"./assets/images/characters/{self.code}_{self.character_E}.png",
@@ -343,8 +357,11 @@ class StatsTierSelect(discord.ui.Select):
         embed.set_thumbnail(url="attachment://profile.png")
 
         new_view = StatsSelectView(
-            self.character_E, self.current_weapon, selected_tier,
-            self.tier_data, self.code
+            self.character_E,
+            self.current_weapon,
+            selected_tier,
+            self.tier_data,
+            self.code,
         )
 
         if interaction.response.is_done():
@@ -378,14 +395,20 @@ class StatsSelectView(discord.ui.View):
                     discord.SelectOption(
                         label=weapon_kr,
                         value=weapon_key,
-                        emoji=discord.PartialEmoji(name=weapon_key, id=emoji_id) if emoji_id else None,
+                        emoji=(
+                            discord.PartialEmoji(name=weapon_key, id=emoji_id)
+                            if emoji_id
+                            else None
+                        ),
                         default=(weapon_key == current_weapon),
                     )
                 )
 
-            self.add_item(StatsWeaponSelect(
-                weapon_options, tier_data, current_tier, character_E, code
-            ))
+            self.add_item(
+                StatsWeaponSelect(
+                    weapon_options, tier_data, current_tier, character_E, code
+                )
+            )
 
         # 티어 드롭다운 옵션 생성
         tier_options = []
@@ -396,14 +419,18 @@ class StatsSelectView(discord.ui.View):
                 discord.SelectOption(
                     label=tier_name_kr,
                     value=tier_value,
-                    emoji=discord.PartialEmoji(name=emoji_name, id=emoji_id) if emoji_id else None,
+                    emoji=(
+                        discord.PartialEmoji(name=emoji_name, id=emoji_id)
+                        if emoji_id
+                        else None
+                    ),
                     default=(tier_value == current_tier),
                 )
             )
 
-        self.add_item(StatsTierSelect(
-            tier_options, tier_data, current_weapon, character_E, code
-        ))
+        self.add_item(
+            StatsTierSelect(tier_options, tier_data, current_weapon, character_E, code)
+        )
 
     async def on_timeout(self):
         """타임아웃 시 모든 컴포넌트 비활성화"""
@@ -641,8 +668,12 @@ class game_info(commands.Cog):
         await interaction.followup.send(embed=embed, view=view)
 
         logger.debug(f"Total patches available: {len(all_patches)}")
-        logger.debug(f"Latest: {latest_patch['major_version']} ({latest_patch['major_date']})")
-        print_user_server(interaction, "Success getRecentPatchNote from DB with dropdown")
+        logger.debug(
+            f"Latest: {latest_patch['major_version']} ({latest_patch['major_date']})"
+        )
+        print_user_server(
+            interaction, "Success getRecentPatchNote from DB with dropdown"
+        )
         await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㄷㅈ", description="현재 스팀 동접자 수를 확인합니다.")
@@ -685,9 +716,11 @@ class game_info(commands.Cog):
             f"./assets/images/icons/{icon}.png", filename="leniticon.png"
         )
         embed.set_thumbnail(url="attachment://leniticon.png")
-        await interaction.response.send_message(file=file, embed=embed)
+        await interaction.response.send_message(file=file, embed=embed, ephemeral=True)
 
-        print_user_server(interaction, f"Success getInGameUser {in_game_user} and save on DB")
+        print_user_server(
+            interaction, f"Success getInGameUser {in_game_user} and save on DB"
+        )
         await logging_function(self.bot, interaction)
 
     @app_commands.command(
@@ -713,7 +746,7 @@ class game_info(commands.Cog):
             color=0x00FF00,
         )
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         print_user_server(interaction, "Success getSeasonRemaining")
         await logging_function(self.bot, interaction)
 
@@ -723,9 +756,13 @@ class game_info(commands.Cog):
 
         rating = await ER.get_demigod_rating()
         if rating:
-            await interaction.response.send_message(f"> 데미갓 컷 : **{rating}** 점")
+            await interaction.response.send_message(
+                f"> 데미갓 컷 : **{rating}** 점", ephemeral=True
+            )
         else:
-            await interaction.response.send_message(f"> 아직 데미갓 유저가 없습니다.")
+            await interaction.response.send_message(
+                f"> 아직 데미갓 유저가 없습니다.", ephemeral=True
+            )
 
         print_user_server(interaction, f"Success check_demigod_rating {rating}")
         await logging_function(self.bot, interaction)
@@ -736,9 +773,13 @@ class game_info(commands.Cog):
 
         rating = await ER.get_iternity_rating()
         if rating:
-            await interaction.response.send_message(f"> 이터니티 컷 : **{rating}** 점")
+            await interaction.response.send_message(
+                f"> 이터니티 컷 : **{rating}** 점", ephemeral=True
+            )
         else:
-            await interaction.response.send_message(f"> 아직 이터니티 유저가 없습니다.")
+            await interaction.response.send_message(
+                f"> 아직 이터니티 유저가 없습니다.", ephemeral=True
+            )
         print_user_server(interaction, f"Success check_iternity_rating {rating}")
         await logging_function(self.bot, interaction)
 
@@ -810,7 +851,9 @@ class game_info(commands.Cog):
 
         files = [file for embed, file in files_and_embeds]
         embeds = [embed for embed, file in files_and_embeds]
-        await interaction.response.send_message(files=files, embeds=embeds)
+        await interaction.response.send_message(
+            files=files, embeds=embeds, ephemeral=True
+        )
 
         print_user_server(interaction, f"Success get user info {name}")
         await logging_function(self.bot, interaction)
@@ -866,7 +909,9 @@ class game_info(commands.Cog):
 
             # 기본 무기 통계로 Embed 생성
             s_dict = all_weapons[default_weapon]
-            embed = create_stats_embed(s_dict, "다이아몬드+", default_weapon, character_E)
+            embed = create_stats_embed(
+                s_dict, "다이아몬드+", default_weapon, character_E
+            )
 
             code = s_dict["code"]
             file = discord.File(
@@ -882,7 +927,9 @@ class game_info(commands.Cog):
 
             await interaction.followup.send(file=file, embed=embed, view=view)
 
-            print_user_server(interaction, f"Success get character statistics {character}")
+            print_user_server(
+                interaction, f"Success get character statistics {character}"
+            )
             await logging_function(self.bot, interaction)
 
         except KeyError as e:
