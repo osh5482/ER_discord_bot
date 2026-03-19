@@ -65,9 +65,7 @@ async def on_ready():
                     )
                     return True
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to sync to {guild.name} ({guild.id}): {e}"
-                    )
+                    logger.warning(f"Failed to sync to {guild.name} ({guild.id}): {e}")
                     return False
 
         results = await asyncio.gather(*(sync_guild(guild) for guild in bot.guilds))
