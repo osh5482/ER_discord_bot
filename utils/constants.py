@@ -154,6 +154,7 @@ char_code = {
     "Mirka": 85,
     "Fenrir": 86,
     "Coraline": 87,
+    "Bihyung": 88,
 }
 
 char_korean = {
@@ -244,6 +245,7 @@ char_korean = {
     "Mirka": "미르카",
     "Fenrir": "펜리르",
     "Coraline": "코렐라인",
+    "Bihyung": "비형",
 }
 
 char_english = {v: k for k, v in char_korean.items()}
@@ -336,6 +338,7 @@ char_weapons = {
     "미르카": ["망치"],
     "펜리르": ["글러브"],
     "코렐라인": ["아르카나"],
+    "비형": ["방망이"],
 }
 
 
