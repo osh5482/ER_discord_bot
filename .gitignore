@@ -72,9 +72,6 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
-docs/_build/
-
 # PyBuilder
 .pybuilder/
 target/
@@ -228,10 +225,12 @@ tempCodeRunnerFile.py
 logs/
 
 # .vscode folder
-.vscode/*.*
-
+.vscode/
 
 # Claude Code local settings
-.claude/*.*
+.claude/
+
+# docs folder
+docs/
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,python,visualstudiocode
