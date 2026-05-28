@@ -13,7 +13,6 @@ from config import Config
 from datetime import datetime
 from database.connection import init_pool, close_pool, create_table, create_patch_table
 
-
 intents = discord.Intents.default()
 # intents.message_content = True
 # intents.guilds = True

@@ -20,6 +20,8 @@ class Config:
     BOT_OWNER_ID = int(os.getenv("BOT_OWNER_ID"))
     SPECIFIC_SERVER_ID = int(os.getenv("SPECIFIC_SERVER_ID"))
     LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID"))
+    # 패치노트 메시지 트리거용 채널 ID. 미설정 시 0 → 어떤 채널과도 매칭되지 않아 자동 비활성
+    PATCH_NOTIFY_CHANNEL_ID = int(os.getenv("PATCH_NOTIFY_CHANNEL_ID", "0"))
 
     # 데이터베이스 설정
     DATABASE_URL = os.getenv("DATABASE_URL")
