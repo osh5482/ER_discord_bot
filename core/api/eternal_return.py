@@ -216,7 +216,9 @@ async def get_user_season_data(user_tuple):
         url = base + para
         response_json = await add_header(url)
 
-        if response_json["code"] == 404:  # 시즌데이터가 없는경우
+        # 유저는 존재하지만 현재 시즌 랭크 게임 기록이 없는 경우
+        # (API가 code 200 + 빈 userStats 리스트로 응답하므로 0을 반환)
+        if not response_json["userStats"]:
             return 0
 
         else:
