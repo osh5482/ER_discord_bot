@@ -50,7 +50,9 @@ async def _fetch_character_stats(session, weapon, character_name, tier=None):
     soup = BeautifulSoup(html, "html.parser")
     script = soup.find("script", id="__NEXT_DATA__")
     if not script:
-        raise Exception("__NEXT_DATA__ 태그를 찾을 수 없습니다. dak.gg 구조가 변경되었을 수 있습니다.")
+        raise Exception(
+            "__NEXT_DATA__ 태그를 찾을 수 없습니다. dak.gg 구조가 변경되었을 수 있습니다."
+        )
 
     next_data = json.loads(script.text)
     queries = next_data["props"]["pageProps"]["dehydratedState"]["queries"]
@@ -69,7 +71,6 @@ async def _fetch_character_stats(session, weapon, character_name, tier=None):
     snapshot = stats_data["characterDetailStatSnapshot"]
     detail = snapshot["characterDetailStat"]
     tier_count = snapshot["tierCount"]
-    tier_game_count = snapshot["tierGameCount"]
 
     # 해당 무기의 통계 찾기 (weaponStats 배열에서 가장 count가 큰 항목 = 요청한 무기)
     weapon_stats = detail.get("weaponStats", [])
@@ -86,7 +87,9 @@ async def _fetch_character_stats(session, weapon, character_name, tier=None):
     rank_size = rank_data.get("size", "")
 
     # 픽률, 승률, RP 획득 계산 (dak.gg 표시 형식에 맞춤)
-    pick_rate = (count / tier_game_count * 100) if tier_game_count > 0 else 0
+    # 픽률 = 이 무기의 픽 수 / 티어 전체 픽 슬롯 수(tierCount).
+    # tierGameCount(게임 수)가 아니라 tierCount로 나눠야 dak.gg 표시값과 일치한다.
+    pick_rate = (count / tier_count * 100) if tier_count > 0 else 0
     win_rate = (win / count * 100) if count > 0 else 0
     rp_gain = (mmr_gain / count) if count > 0 else 0
 
@@ -125,7 +128,7 @@ async def _fetch_page_data(session, character_name, tier=None):
     weaponType 파라미터 없이 요청하여 모든 무기 통계를 포함시킨다.
 
     Returns:
-        tuple: (stats_data, mastery_map, tier_game_count) - 통계 쿼리 데이터, mastery ID→무기영문명 매핑, 티어 게임 수
+        tuple: (stats_data, mastery_map) - 통계 쿼리 데이터, mastery ID→무기영문명 매핑
     """
     url = f"https://dak.gg/er/characters/{character_name}"
     if tier:
@@ -169,7 +172,7 @@ async def _fetch_page_data(session, character_name, tier=None):
     return stats_data, mastery_map
 
 
-def _build_weapon_stats_dict(ws, character_name, weapon_key, tier_game_count):
+def _build_weapon_stats_dict(ws, character_name, weapon_key, tier_count):
     """weaponStats 항목 하나를 기존 형식의 stats_dict로 변환한다."""
     count = ws["count"]
     win = ws["win"]
@@ -177,7 +180,9 @@ def _build_weapon_stats_dict(ws, character_name, weapon_key, tier_game_count):
     rank_data = ws.get("rank", {})
     rank_size = rank_data.get("size", "")
 
-    pick_rate = (count / tier_game_count * 100) if tier_game_count > 0 else 0
+    # 픽률 = 이 무기의 픽 수 / 티어 전체 픽 슬롯 수(tierCount).
+    # tierGameCount(게임 수)가 아니라 tierCount로 나눠야 dak.gg 표시값과 일치한다.
+    pick_rate = (count / tier_count * 100) if tier_count > 0 else 0
     win_rate = (win / count * 100) if count > 0 else 0
     rp_gain = (mmr_gain / count) if count > 0 else 0
 
@@ -223,7 +228,7 @@ async def _fetch_all_weapon_stats(session, character_name, tier=None):
 
     snapshot = stats_data["characterDetailStatSnapshot"]
     detail = snapshot["characterDetailStat"]
-    tier_game_count = snapshot["tierGameCount"]
+    tier_count = snapshot["tierCount"]
 
     weapon_stats = detail.get("weaponStats", [])
     if not weapon_stats:
@@ -239,10 +244,12 @@ async def _fetch_all_weapon_stats(session, character_name, tier=None):
             logger.warning(f"알 수 없는 mastery ID: {ws['key']}, 건너뜀")
             continue
         result[weapon_key] = _build_weapon_stats_dict(
-            ws, character_name, weapon_key, tier_game_count
+            ws, character_name, weapon_key, tier_count
         )
 
-    logger.info(f"전체 무기 통계 파싱 완료: {character_name} (tier={tier}, 무기 {len(result)}개)")
+    logger.info(
+        f"전체 무기 통계 파싱 완료: {character_name} (tier={tier}, 무기 {len(result)}개)"
+    )
     return result
 
 
@@ -271,9 +278,7 @@ async def dakgg_crawler_all_weapons_all_tiers(character_name, tier_data):
                    키: 티어값, 값: {무기영문명: stats_dict} 형태
     """
     remaining_tiers = [
-        tier_value
-        for tier_value in tier_filter.values()
-        if tier_value not in tier_data
+        tier_value for tier_value in tier_filter.values() if tier_value not in tier_data
     ]
 
     if not remaining_tiers:
@@ -328,9 +333,7 @@ async def dakgg_crawler_all_tiers(weapon, character_name, tier_data):
     """
     # 아직 크롤링되지 않은 티어만 수집
     remaining_tiers = [
-        tier_value
-        for tier_value in tier_filter.values()
-        if tier_value not in tier_data
+        tier_value for tier_value in tier_filter.values() if tier_value not in tier_data
     ]
 
     if not remaining_tiers:
