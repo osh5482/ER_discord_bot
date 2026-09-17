@@ -438,6 +438,143 @@ class StatsSelectView(discord.ui.View):
             item.disabled = True
 
 
+class SeasonSelect(discord.ui.Select):
+    """전적 시즌 선택 드롭다운 메뉴"""
+
+    def __init__(self, options, season_data_cache, name, current_season_id):
+        super().__init__(
+            placeholder="다른 시즌의 전적을 확인하세요...",
+            options=options,
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+        self.season_data_cache = season_data_cache  # {season_id(int): rank_data}
+        self.name = name
+        self.current_season_id = current_season_id  # 실제 현재 진행 시즌 ID
+
+    async def callback(self, interaction: discord.Interaction):
+        """드롭다운에서 시즌 선택 시 호출"""
+        selected_season_id = int(self.values[0])
+        rank_data = self.season_data_cache.get(selected_season_id)
+
+        embed, file = create_user_season_embed(self.name, rank_data, selected_season_id)
+
+        # 전체 뷰 재생성 (선택 시즌 default 변경)
+        new_view = SeasonSelectView(
+            self.name,
+            self.season_data_cache,
+            selected_season_id,
+            self.current_season_id,
+        )
+
+        await interaction.response.edit_message(
+            attachments=[file], embed=embed, view=new_view
+        )
+
+
+class SeasonSelectView(discord.ui.View):
+    """시즌 선택을 위한 드롭다운 메뉴 뷰"""
+
+    def __init__(self, name, season_data_cache, selected_season_id, current_season_id):
+        super().__init__(timeout=300)
+        self.name = name
+        self.season_data_cache = season_data_cache
+
+        # 시즌 옵션 생성: 최신 시즌이 위로 오도록 내림차순 정렬, 최대 25개(디스코드 제한)
+        sorted_season_ids = sorted(season_data_cache.keys(), reverse=True)[:25]
+
+        options = []
+        for season_id in sorted_season_ids:
+            season_name = ER.get_season_name(season_id)
+            label = season_name
+            if season_id == current_season_id:
+                label = f"{season_name} (현재)"
+            options.append(
+                discord.SelectOption(
+                    label=label,
+                    value=str(season_id),
+                    default=(season_id == selected_season_id),
+                )
+            )
+
+        self.add_item(SeasonSelect(options, season_data_cache, name, current_season_id))
+
+    async def on_timeout(self):
+        """타임아웃 시 모든 컴포넌트 비활성화"""
+        for item in self.children:
+            item.disabled = True
+
+
+def create_user_season_embed(name, rank_data, season_id):
+    """유저의 특정 시즌 랭크 데이터로 Discord 임베드와 썸네일 파일을 생성하는 함수
+
+    Args:
+        name: 유저 닉네임
+        rank_data: ER.get_user_season_data 반환값 (404 / 0 / 랭크 데이터 dict)
+        season_id: 시즌 ID (정수). 404 케이스에서는 None을 허용하며 사용되지 않음
+
+    Returns:
+        tuple(discord.Embed, discord.File)
+    """
+    # dak.gg 프로필 시즌 파라미터: 정규 시즌 N -> SEASON_(N+9)
+    # (season_id에서 정규 시즌 번호 N = (season_id - 17) // 2)
+    player_url = f"https://dak.gg/er/players/{name}"
+    if season_id is not None:
+        season_param = (season_id - 17) // 2 + 9
+        season_url = f"{player_url}?season=SEASON_{season_param}"
+    else:
+        season_url = player_url
+
+    if rank_data == 404:
+        code = 404
+        char_name = "Leniticon"
+        embed = discord.Embed(
+            title=f"{name}",
+            description="존재하지 않는 유저입니다.\n서버 점검 중일수도 있습니다.",
+            color=0x00FF00,
+            url=player_url,
+        )
+
+    elif rank_data == 0:
+        code = rank_data
+        char_name = "Nadja"
+        embed = discord.Embed(
+            title=f"{name}",
+            description="해당 시즌 정보가 없습니다.",
+            color=0x00FF00,
+            url=season_url,
+        )
+
+    else:
+        rank = format(rank_data["rank"], ",")
+        tier = rank_data["tier"]
+        mmr = rank_data["mmr"]
+
+        win_rate = round((rank_data["totalWins"] / rank_data["totalGames"]) * 100, 2)
+        average_TK = round(rank_data["totalTeamKills"] / rank_data["totalGames"], 2)
+        average_rank = rank_data["averageRank"]
+        most_character_code = rank_data["characterStats"][0]["characterCode"]
+        char_name, code = ER.find_characte_name(most_character_code)
+
+        embed = discord.Embed(
+            title=f"{name}",
+            color=0x00FF00,
+            url=season_url,
+        )
+        embed.add_field(name="랭킹", value=f"{rank}위", inline=True)
+        embed.add_field(name="티어", value=f"{tier}", inline=True)
+        embed.add_field(name="mmr", value=f"{mmr}", inline=True)
+        embed.add_field(name="승률", value=f"{win_rate}%", inline=True)
+        embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
+        embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
+
+    file_path = f"./assets/images/characters/{code}_{char_name}.png"
+    embed.set_thumbnail(url=f"attachment://{char_name}.png")
+    file = discord.File(file_path, filename=f"{char_name}.png")
+    return embed, file
+
+
 def create_patch_embed(patch_info):
     """패치 정보로부터 Discord 임베드 생성"""
     major_version = patch_info.get("major_version", "알 수 없음")
@@ -783,80 +920,89 @@ class game_info(commands.Cog):
         print_user_server(interaction, f"Success check_iternity_rating {rating}")
         await logging_function(self.bot, interaction)
 
-    @app_commands.command(
-        name="ㅈㅈ", description="유저의 현재 시즌 정보를 가져옵니다."
-    )
+    @app_commands.command(name="ㅈㅈ", description="유저의 시즌 정보를 가져옵니다.")
     @app_commands.describe(name="닉네임")
     async def get_user_info(self, interaction: discord.Interaction, name: str):
-        files_and_embeds = []
+        # 병렬 시즌 조회에 시간이 걸릴 수 있으므로 먼저 defer (본인만 보이도록 ephemeral)
+        await interaction.response.defer(ephemeral=True)
 
         user_tuple = await ER.get_user_num(name)
-        if user_tuple == aiohttp.ClientResponseError:
-            await interaction.response.send_message(
+
+        # 통신 에러: get_user_num이 예외 인스턴스를 반환한 경우
+        if isinstance(user_tuple, Exception):
+            await interaction.followup.send(
                 "서버 오류로 인해 유저 정보를 가져올 수 없습니다.", ephemeral=True
             )
             return
 
-        rank_data = await ER.get_user_season_data(user_tuple)
+        # 존재하지 않는 유저: 404 임베드 표시
+        if user_tuple == 404:
+            embed, file = create_user_season_embed(name, 404, None)
+            await interaction.followup.send(file=file, embed=embed, ephemeral=True)
+            print_user_server(interaction, f"Not found user {name}")
+            await logging_function(self.bot, interaction)
+            return
 
-        if rank_data == 404:
-            code = 404
-            char_name = "Leniticon"
-            embed = discord.Embed(
-                title=f"{name}",
-                description="존재하지 않는 유저입니다.\n서버 점검 중일수도 있습니다.",
-                color=0x00FF00,
-                url=f"https://dak.gg/er/players/{name}",
+        try:
+            # 정규 시즌 목록과 현재 시즌 ID 확보
+            normal_seasons = await ER.get_normal_seasons()
+            current_season_data = await ER.get_current_season()
+            current_season_id = current_season_data["seasonID"]
+
+            # 모든 정규 시즌을 병렬 조회 (개별 실패는 예외 객체로 수집)
+            season_ids = [s["seasonID"] for s in normal_seasons]
+            results = await asyncio.gather(
+                *[ER.get_user_season_data(user_tuple, sid) for sid in season_ids],
+                return_exceptions=True,
             )
 
-        elif rank_data == 0:
-            code = rank_data
-            char_name = "Nadja"
-            embed = discord.Embed(
-                title=f"{name}",
-                description="현재시즌 정보가 없습니다.",
-                color=0x00FF00,
-                url=f"https://dak.gg/er/players/{name}",
+            # 드롭다운 노출 시즌 구성:
+            # - 현재 시즌은 데이터 유무와 무관하게 포함
+            # - 과거 시즌은 정상 데이터(dict)인 경우만 포함
+            # - 조회 실패(예외)한 시즌은 제외
+            season_data_cache = {}
+            for sid, data in zip(season_ids, results):
+                if isinstance(data, Exception):
+                    continue
+                if sid == current_season_id:
+                    season_data_cache[sid] = data
+                elif isinstance(data, dict):
+                    season_data_cache[sid] = data
+
+            # 현재 시즌이 목록에 없거나 조회 실패한 경우 단독 재조회로 보강
+            if current_season_id not in season_data_cache:
+                current_data = await ER.get_user_season_data(
+                    user_tuple, current_season_id
+                )
+                season_data_cache[current_season_id] = current_data
+
+            # 현재 시즌 임베드 생성 (기본 화면)
+            embed, file = create_user_season_embed(
+                name, season_data_cache[current_season_id], current_season_id
             )
 
-        else:
-            rank = format(rank_data["rank"], ",")
-            tier = rank_data["tier"]
-            mmr = rank_data["mmr"]
+            # 노출 시즌이 2개 이상일 때만 드롭다운 뷰 부착
+            if len(season_data_cache) >= 2:
+                view = SeasonSelectView(
+                    name,
+                    season_data_cache,
+                    current_season_id,
+                    current_season_id,
+                )
+                await interaction.followup.send(
+                    file=file, embed=embed, view=view, ephemeral=True
+                )
+            else:
+                await interaction.followup.send(file=file, embed=embed, ephemeral=True)
 
-            win_rate = round(
-                (rank_data["totalWins"] / rank_data["totalGames"]) * 100, 2
+            print_user_server(interaction, f"Success get user info {name}")
+            await logging_function(self.bot, interaction)
+
+        except Exception as e:
+            logger.exception(f"Error in get_user_info: {e}")
+            await interaction.followup.send(
+                "유저 정보를 가져오는 데 실패했습니다.", ephemeral=True
             )
-            average_TK = round(rank_data["totalTeamKills"] / rank_data["totalGames"], 2)
-            average_rank = rank_data["averageRank"]
-            most_character_code = rank_data["characterStats"][0]["characterCode"]
-            char_name, code = ER.find_characte_name(most_character_code)
-
-            embed = discord.Embed(
-                title=f"{name}",
-                color=0x00FF00,
-                url=f"https://dak.gg/er/players/{name}",
-            )
-            embed.add_field(name="랭킹", value=f"{rank}위", inline=True)
-            embed.add_field(name="티어", value=f"{tier}", inline=True)
-            embed.add_field(name="mmr", value=f"{mmr}", inline=True)
-            embed.add_field(name="승률", value=f"{win_rate}%", inline=True)
-            embed.add_field(name="평균순위", value=f"{average_rank}위", inline=True)
-            embed.add_field(name="평균TK", value=f"{average_TK}", inline=True)
-
-        file_path = f"./assets/images/characters/{code}_{char_name}.png"
-        embed.set_thumbnail(url=f"attachment://{char_name}.png")
-        file = discord.File(file_path, filename=f"{char_name}.png")
-        files_and_embeds.append((embed, file))
-
-        files = [file for embed, file in files_and_embeds]
-        embeds = [embed for embed, file in files_and_embeds]
-        await interaction.response.send_message(
-            files=files, embeds=embeds, ephemeral=True
-        )
-
-        print_user_server(interaction, f"Success get user info {name}")
-        await logging_function(self.bot, interaction)
 
     @app_commands.command(name="ㅌㄱ", description="캐릭터 통계를 가져옵니다.")
     @app_commands.describe(character="캐릭터 이름")

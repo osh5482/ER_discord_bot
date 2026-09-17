@@ -109,6 +109,41 @@ async def get_current_season() -> dict:
         return response_json
 
 
+async def get_normal_seasons() -> list:
+    """전체 시즌 목록에서 정규 시즌만 필터링해 반환하는 함수
+    반환값 : list(정규 시즌 데이터 딕셔너리 리스트) /
+    통신에러시 add_header에서 예외 전파"""
+    url = "https://open-api.bser.io/v2/data/Season"
+    response_json = await add_header(url)
+
+    all_season_data = response_json["data"]
+    if not all_season_data:
+        logger.error("'data' key not found in JSON response")
+        return []
+
+    # 정규 시즌만 필터링: seasonID 19 이상이고 (seasonID - 17)이 짝수인 시즌
+    # (seasonID 0=일반게임, 1~17=EA 시즌, 18=정규 프리시즌 1 → 모두 제외)
+    # 정규 시즌은 seasonID 19(정규 시즌 1)부터 시작한다.
+    normal_seasons = [
+        season
+        for season in all_season_data
+        if season.get("seasonID", 0) >= 19 and (season["seasonID"] - 17) % 2 == 0
+    ]
+    return normal_seasons
+
+
+def get_season_name(season_id: int) -> str:
+    """시즌 ID로 시즌 이름을 생성하는 함수
+    반환값 : str(시즌 이름, 예: "정규 시즌 1" / "프리 시즌 1")"""
+    if (season_id - 17) % 2 == 0:
+        front = "정규 시즌"
+        now = (season_id - 17) // 2
+    else:
+        front = "프리 시즌"
+        now = ((season_id - 17) // 2) + 1
+    return f"{front} {now}"
+
+
 async def get_current_season_name() -> tuple:
     """현재시즌의 이름을 확인하는 함수
     반환값 : tuple(현재 시즌 데이터, 현재 시즌 이름) /
@@ -118,15 +153,7 @@ async def get_current_season_name() -> tuple:
 
         if current_season_data:
             season_id = current_season_data["seasonID"]
-
-            if (season_id - 17) % 2 == 0:
-                front = "정규 시즌"
-                now = (season_id - 17) // 2
-
-            else:
-                front = "프리 시즌"
-                now = ((season_id - 17) // 2) + 1
-            current_season_name = f"{front} {now}"
+            current_season_name = get_season_name(season_id)
             return current_season_data, current_season_name
 
         else:
@@ -197,37 +224,30 @@ async def remain_time(current_season_data) -> list:
         return None
 
 
-async def get_user_season_data(user_tuple):
+async def get_user_season_data(user_tuple, season_id):
     """
-    유저 정보 튜플로 시즌 랭크 데이터 가져오는 함수
-    반환값 : dict(유저 현재시즌 랭크 데이터) /
+    유저 정보 튜플과 시즌 ID로 시즌 랭크 데이터 가져오는 함수
+    반환값 : dict(유저 시즌 랭크 데이터) /
     유저가 없는경우 int(404) /
-    유저가 랭을 안돌린 경우 int(0)"""
+    유저가 해당 시즌 랭을 안돌린 경우 int(0)"""
     if user_tuple == 404:  # 없는유저인경우
         return 404
 
-    else:
-        user_num = user_tuple[0]
-        # user_name = user_tuple[1]
-        base = "https://open-api.bser.io/v2/user/stats/uid"
-        current_season_data = await get_current_season()
-        season_id = current_season_data["seasonID"]
-        para = f"/{user_num}/{season_id}/3"  # 3 = 랭크게임 데이터
-        url = base + para
-        response_json = await add_header(url)
+    user_num = user_tuple[0]
+    base = "https://open-api.bser.io/v2/user/stats/uid"
+    para = f"/{user_num}/{season_id}/3"  # 3 = 랭크게임 데이터
+    url = base + para
+    response_json = await add_header(url)
 
-        # 유저는 존재하지만 현재 시즌 랭크 게임 기록이 없는 경우
-        # (API가 code 200 + 빈 userStats 리스트로 응답하므로 0을 반환)
-        if not response_json["userStats"]:
-            return 0
+    # 유저는 존재하지만 해당 시즌 랭크 게임 기록이 없는 경우
+    # (API가 code 200 + 빈 userStats 리스트로 응답하므로 0을 반환)
+    if not response_json["userStats"]:
+        return 0
 
-        else:
-            user_stats = response_json["userStats"][0]
-            tier = detect_tier(user_stats)
-            user_stats["tier"] = tier
-            # print(f"Success: creating user's season data")
-            # print(json.dumps(user_stats, ensure_ascii=False, indent=2))
-            return user_stats  # 유저의 랭크 데이터를 딕셔너리로 반환
+    user_stats = response_json["userStats"][0]
+    tier = detect_tier(user_stats)
+    user_stats["tier"] = tier
+    return user_stats  # 유저의 랭크 데이터를 딕셔너리로 반환
 
 
 def detect_tier(userStats) -> str:
