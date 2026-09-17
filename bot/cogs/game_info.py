@@ -940,6 +940,16 @@ class game_info(commands.Cog):
             # 정규 시즌 목록과 현재 시즌 ID 확보
             normal_seasons = await ER.get_normal_seasons()
             current_season_data = await ER.get_current_season()
+            if (
+                not isinstance(current_season_data, dict)
+                or "seasonID" not in current_season_data
+            ):
+                logger.error("Current season data is missing or invalid")
+                await interaction.followup.send(
+                    "현재 시즌 정보를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+                    ephemeral=True,
+                )
+                return
             current_season_id = current_season_data["seasonID"]
 
             # 모든 정규 시즌을 병렬 조회 (개별 실패는 예외 객체로 수집)
