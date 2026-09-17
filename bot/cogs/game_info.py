@@ -926,24 +926,17 @@ class game_info(commands.Cog):
         # 병렬 시즌 조회에 시간이 걸릴 수 있으므로 먼저 defer (본인만 보이도록 ephemeral)
         await interaction.response.defer(ephemeral=True)
 
-        user_tuple = await ER.get_user_num(name)
-
-        # 통신 에러: get_user_num이 예외 인스턴스를 반환한 경우
-        if isinstance(user_tuple, Exception):
-            await interaction.followup.send(
-                "서버 오류로 인해 유저 정보를 가져올 수 없습니다.", ephemeral=True
-            )
-            return
-
-        # 존재하지 않는 유저: 404 임베드 표시
-        if user_tuple == 404:
-            embed, file = create_user_season_embed(name, 404, None)
-            await interaction.followup.send(file=file, embed=embed, ephemeral=True)
-            print_user_server(interaction, f"Not found user {name}")
-            await logging_function(self.bot, interaction)
-            return
-
         try:
+            user_tuple = await ER.get_user_num(name)
+
+            # 존재하지 않는 유저: 404 임베드 표시
+            if user_tuple == 404:
+                embed, file = create_user_season_embed(name, 404, None)
+                await interaction.followup.send(file=file, embed=embed, ephemeral=True)
+                print_user_server(interaction, f"Not found user {name}")
+                await logging_function(self.bot, interaction)
+                return
+
             # 정규 시즌 목록과 현재 시즌 ID 확보
             normal_seasons = await ER.get_normal_seasons()
             current_season_data = await ER.get_current_season()
